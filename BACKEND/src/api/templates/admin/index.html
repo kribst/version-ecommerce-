@@ -1,0 +1,12 @@
+{% extends "admin/index.html" %}
+
+{% block content %}
+    <div class="module">
+        <h2>Gestion des fichiers produits</h2>
+        <ul>
+            <li><a href="{% url 'admin:product_files_view' %}">Voir et gérer les images produits</a></li>
+        </ul>
+    </div>
+
+    {{ block.super }}
+{% endblock %}
