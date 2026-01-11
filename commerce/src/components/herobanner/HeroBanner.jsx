@@ -1,22 +1,24 @@
 import HeroCarousel from "./HeroCarousel";
 import HeroPromo from "./HeroPromo";
+import styles from "./HeroBanner.module.css";
 
 export default function Hero() {
   return (
-    <section className="w-full bg-gray-100">
-      <div className="max-w-7xl mx-auto grid grid-cols-12 min-h-[520px]">
+    <section className={styles.heroContainer}>
+  <div className="max-w-7xl mx-auto grid grid-cols-12 min-h-[520px] gap-0"> {/* gap-0 pour supprimer l’espacement entre colonnes */}
+    
+    {/* Carousel */}
+    <div className="col-span-12 lg:col-span-9">
+      <HeroCarousel />
+    </div>
 
-        {/* Carousel 9/12 sur desktop, 12/12 sur mobile */}
-        <div className="col-span-12 lg:col-span-9">
-          <HeroCarousel />
-        </div>
+    {/* Promo */}
+    <div className="col-span-12 lg:col-span-3 h-full">
+      <HeroPromo />
+    </div>
 
-        {/* Promo 3/12 sur desktop, masqué sur mobile/tablette */}
-        <div className="hidden lg:block col-span-3">
-          <HeroPromo />
-        </div>
+  </div>
+</section>
 
-      </div>
-    </section>
   );
 }

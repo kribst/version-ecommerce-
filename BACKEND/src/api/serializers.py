@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import SiteSettings, ProductCarousel, ProductPromotion
+from .models import SiteSettings, ProductCarousel, ProductPromotion, Category
 
 
 # Informations générales sur l'entreprise
@@ -98,7 +98,7 @@ class ProductCarouselSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at']
 
     def get_product_image(self, obj):
-        """Retourne l'image principale du produit, ou la première, ou l'image par défaut"""
+        """Retourne l'image principale du produit, ou la première, ou l'image par défaut (image ou image_url)"""
         primary_image = obj.product.images.filter(is_primary=True).first()
         if primary_image:
             return primary_image.image.url
@@ -107,10 +107,8 @@ class ProductCarouselSerializer(serializers.ModelSerializer):
         if first_image:
             return first_image.image.url
 
-        if obj.product.image:
-            return obj.product.image.url
-
-        return None
+        # Utilise image_display_url qui gère image ET image_url
+        return obj.product.image_display_url
 
 
 # Produit promotionnel
@@ -150,7 +148,7 @@ class ProductPromotionSerializer(serializers.ModelSerializer):
         ]
 
     def get_product_image(self, obj):
-        """Image principale du produit"""
+        """Image principale du produit (image ou image_url)"""
         primary = obj.product.images.filter(is_primary=True).first()
         if primary:
             return primary.image.url
@@ -159,7 +157,19 @@ class ProductPromotionSerializer(serializers.ModelSerializer):
         if first:
             return first.image.url
 
-        if obj.product.image:
-            return obj.product.image.url
+        # Utilise image_display_url qui gère image ET image_url
+        return obj.product.image_display_url
 
-        return None
+
+
+
+# Produit categorie
+# Produit categorie
+
+
+
+
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = ['id', 'name', 'slug', 'description', 'image']

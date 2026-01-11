@@ -15,6 +15,28 @@ async function fetchSiteSettings() {
   return res.json();
 }
 
+// Export metadata pour SEO (Next.js App Router)
+export async function generateMetadata() {
+  const settings = await fetchSiteSettings();
+  
+  // NEXT_PUBLIC_API_URL doit être défini dans les variables d'environnement (production et développement)
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  
+  const metadata = {
+    title: settings?.company_name || "Mon Ecommerrrrrrrrce",
+    description: settings?.meta_description || settings?.about || "Site ecommerce avec Next.js",
+  };
+  
+  // Ajouter le favicon si présent
+  if (settings?.favicon && apiUrl) {
+    metadata.icons = {
+      icon: `${apiUrl}${settings.favicon}`,
+    };
+  }
+  
+  return metadata;
+}
+
 export default async function RootLayout({ children }) {
   const settings = await fetchSiteSettings(); // SSR: fetch côté serveur
 

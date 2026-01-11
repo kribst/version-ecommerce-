@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { FaArrowLeft, FaArrowRight } from "react-icons/fa";
-import styles from "./HeroBanner.module.css";
+import styles from "./HeroCarousel.module.css";
 import api from "@/utils/api";
 
 export default function HeroCarousel() {
@@ -27,46 +27,31 @@ export default function HeroCarousel() {
         });
 
         // Mapper les données de l'API vers le format attendu
-        const mappedSlides = response.data.map((item) => ({
-          id: item.id,
-          image: item.product_image 
-            ? `${process.env.NEXT_PUBLIC_API_URL}${item.product_image}` 
-            : "/img/laptop.png", // Image par défaut si aucune image
-          subtitle: item.comment_1 || "SAVE UP TO A $400",
-          title: item.product_name || "On Selected Laptops & Desktop Or Smartphone",
-          description: item.comment_2 || "Terms and Condition Apply",
-          price: item.product_price,
-          productId: item.product,
-        }));
+        const mappedSlides = response.data
+          .filter((item) => item.product_image) // Ne garder que les items avec une image
+          .map((item) => {
+            // Construire l'URL de l'image : si c'est déjà une URL complète, l'utiliser telle quelle
+            // Sinon, combiner avec l'URL de l'API
+            const imageUrl = item.product_image.startsWith('http')
+              ? item.product_image
+              : `${process.env.NEXT_PUBLIC_API_URL}${item.product_image}`;
+            
+            return {
+              id: item.id,
+              image: imageUrl,
+              subtitle: item.comment_1 || "SAVE UP TO A $400",
+              title: item.product_name || "On Selected Laptops & Desktop Or Smartphone",
+              description: item.comment_2 || "Terms and Condition Apply",
+              price: item.product_price,
+              productId: item.product,
+            };
+          });
 
         setSlides(mappedSlides);
-        
-        // Si aucun slide, utiliser des données par défaut
-        if (mappedSlides.length === 0) {
-          setSlides([
-            {
-              id: 1,
-              image: "/img/laptop.png",
-              subtitle: "SAVE UP TO A $400",
-              title: "On Selected Laptops & Desktop Or Smartphone",
-              description: "Terms and Condition Apply",
-            },
-          ]);
-        }
       } catch (err) {
         console.error("Erreur lors du chargement du carousel:", err);
         setError(err.message);
-        
-        // En cas d'erreur, utiliser des données par défaut
-        setSlides([
-          {
-            id: 1,
-            image: "/img/laptop.png",
-            subtitle: "SAVE UP TO A $400",
-            title: "On Selected Laptops & Desktop Or Smartphone",
-            description: "Terms and Condition Apply",
-          },
-        ]);
+        setSlides([]);
       } finally {
         setLoading(false);
       }
@@ -74,6 +59,15 @@ export default function HeroCarousel() {
 
     fetchCarouselProducts();
   }, []);
+
+  // Auto-slide
+  useEffect(() => {
+    if (slides.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
+    }, 5000); // Change de slide toutes les 5 secondes
+    return () => clearInterval(interval);
+  }, [slides.length]);
 
   const nextSlide = () => {
     if (slides.length > 0) {
@@ -122,32 +116,25 @@ export default function HeroCarousel() {
     <div className={`h-full flex items-center px-6 md:px-10 py-8 md:py-12 bg-white ${styles.carouselContainer}`}>
       <div className="grid grid-cols-1 lg:grid-cols-2 items-center gap-8 lg:gap-12 w-full">
         {/* Image */}
-        <div className="flex justify-center order-2 lg:order-1">
-          {slide.image.startsWith('http') ? (
-            // Pour les images externes depuis l'API
-            <img
-              src={slide.image}
-              alt={slide.title}
-              className="w-full max-w-full h-auto"
-              onError={(e) => {
-                e.target.src = "/img/laptop.png";
-              }}
-            />
-          ) : (
-            // Pour les images locales
-            <Image
-              src={slide.image}
-              alt={slide.title}
-              width={480}
-              height={320}
-              priority={currentSlide === 0}
-              className="w-full max-w-full h-auto"
-              onError={(e) => {
-                e.target.src = "/img/laptop.png";
-              }}
-            />
-          )}
-        </div>
+        <div className={styles.slideImageWrapper}>
+            {slide.image.startsWith('http') ? (
+              <img
+                src={slide.image}
+                alt={slide.title}
+                className={styles.slideImage}
+              />
+            ) : (
+              <Image
+                src={slide.image}
+                alt={slide.title}
+                fill
+                style={{ objectFit: 'cover', objectPosition: 'center' }}
+                className={styles.slideImage}
+                priority={currentSlide === 0}
+              />
+            )}
+          </div>
+
 
         {/* Content */}
         <div className="order-1 lg:order-2 text-center lg:text-left">

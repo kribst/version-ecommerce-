@@ -1,64 +1,24 @@
-/* ========== CAROUSEL CONTAINER ========== */
-.carouselContainer {
-  min-height: 450px;
+/* ========== BLOCS NON UTILISÉS PAR HeroCarousel ========== */
+
+.heroContainer > div {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }
 
-/* ========== PROMO CONTAINER ========== */
-.promoContainer {
-  min-height: 450px;
+
+
+/* Conteneur principal englobant HeroCarousel et HeroPromo */
+.heroContainer {
+  width: 100%;
 }
 
-/* ========== TYPOGRAPHY ========== */
-.subtitle {
-  text-transform: uppercase;
-}
 
-.title {
-  line-height: 1.2;
-}
 
-/* ========== BOUTONS ========== */
-.shopBtn {
-  background: #ff4757; /* Couleur de la charte */
-  color: white;
-  border: none;
-  padding: 14px 35px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 15px;
-  font-weight: 600;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(255, 71, 87, 0.3);
-}
-
-.shopBtn:hover {
-  background: #ff3838;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 71, 87, 0.4);
-}
-
-.navBtn {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: #ff4757; /* Couleur de la charte */
-  color: white;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s ease;
-  cursor: pointer;
-  box-shadow: 0 2px 6px rgba(255, 71, 87, 0.3);
-}
-
-.navBtn:hover {
-  background: #ff3838;
-  transform: scale(1.1);
-}
-
+/* Bouton "Voir l’offre" */
 .cartBtn {
-  background: #ff4757; /* Couleur de la charte */
+  background: #ff4757;
   color: white;
   border: none;
   padding: 10px 24px;
@@ -79,9 +39,9 @@
   box-shadow: 0 4px 12px rgba(255, 71, 87, 0.4);
 }
 
-/* ========== BADGES ========== */
+/* Badge de réduction */
 .saveBadge {
-  background: #ff4757; /* Couleur de la charte */
+  background: #ff4757;
   color: white;
   padding: 8px 16px;
   border-radius: 8px;
@@ -90,69 +50,13 @@
   box-shadow: 0 2px 6px rgba(255, 71, 87, 0.3);
 }
 
+/* Badge d’offre spéciale */
 .offerBadge {
-  background: #ff4757; /* Couleur de la charte */
+  background: #ff4757;
   color: white;
   padding: 6px 14px;
   border-radius: 8px;
   font-size: 12px;
   font-weight: 600;
   box-shadow: 0 2px 6px rgba(255, 71, 87, 0.3);
-}
-
-/* ========== RESPONSIVE ========== */
-
-/* Breakpoint: 1200px - Tablette large */
-@media (max-width: 1200px) {
-  .carouselContainer,
-  .promoContainer {
-    min-height: 400px;
-  }
-}
-
-/* Breakpoint: 768px - Tablette */
-@media (max-width: 768px) {
-  .carouselContainer {
-    min-height: 350px;
-  }
-
-  .title {
-    font-size: 28px;
-  }
-
-  .shopBtn {
-    padding: 12px 28px;
-    font-size: 14px;
-  }
-
-  .navBtn {
-    width: 40px;
-    height: 40px;
-  }
-}
-
-/* Breakpoint: 480px - Mobile */
-@media (max-width: 480px) {
-  .carouselContainer {
-    min-height: 300px;
-  }
-
-  .title {
-    font-size: 24px;
-  }
-
-  .subtitle {
-    font-size: 12px;
-    letter-spacing: 2px;
-  }
-
-  .shopBtn {
-    padding: 10px 24px;
-    font-size: 13px;
-  }
-
-  .navBtn {
-    width: 36px;
-    height: 36px;
-  }
 }
