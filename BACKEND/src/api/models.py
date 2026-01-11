@@ -166,5 +166,119 @@ class ProductImage(models.Model):
     alt_text = models.CharField(max_length=200, blank=True)
     is_primary = models.BooleanField(default=False)
 
+
 # Fin Informations générales sur les produits
 # Fin Informations générales sur les produits
+
+
+# produit carousel
+# produit carousel  
+
+
+class ProductCarousel(models.Model):
+    product = models.ForeignKey(Product, related_name='carousel_items', on_delete=models.CASCADE)
+    comment_2 = models.CharField(max_length=255, blank=True, help_text="Deuxième commentaire marketing")
+    comment_1 = models.CharField(max_length=255, blank=True, help_text="Premier commentaire marketing")
+    is_active = models.BooleanField(default=True, help_text="Afficher ce produit dans le carousel")
+    position = models.PositiveIntegerField(default=0, help_text="Ordre d'affichage dans le carousel")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['position']
+        verbose_name = "Carousel Product"
+        verbose_name_plural = "Carousel Products"
+
+    def __str__(self):
+        return f"{self.product.name} (Carousel)"
+
+    @property
+    def price(self):
+        """Accès direct au prix du produit"""
+        return self.product.price
+
+    @property
+    def image(self):
+        """
+        Retourne l'image principale du produit
+        Sinon la première image
+        Sinon l'image par défaut du produit
+        """
+        primary_image = self.product.images.filter(is_primary=True).first()
+        if primary_image:
+            return primary_image.image.url
+
+        first_image = self.product.images.first()
+        if first_image:
+            return first_image.image.url
+
+        # Utilise image_display_url qui gère image ET image_url
+        return self.product.image_display_url
+
+
+# Fin produit carousel
+# Fin produit carousel
+
+
+# produit promotion
+# produit promotion
+
+
+class ProductPromotion(models.Model):
+    product = models.OneToOneField(
+        Product,
+        related_name='promotion',
+        on_delete=models.CASCADE
+    )
+
+    promo_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        help_text="Prix promotionnel"
+    )
+
+    label = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Ex: Promo, -20%, Black Friday"
+    )
+
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Promotion active ou non"
+    )
+
+    # ✅ NOUVEAU CHAMP
+    is_featured = models.BooleanField(
+        default=False,
+        help_text="Mettre cette promotion en avant (homepage / hero)"
+    )
+
+    start_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Date de début de la promotion"
+    )
+
+    end_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Date de fin de la promotion"
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Promotion product"
+        verbose_name_plural = "Promotions products"
+
+    def __str__(self):
+        return f"Promo - {self.product.name}"
+
+    @property
+    def discount_percent(self):
+        if self.product.price > 0:
+            return round(
+                ((self.product.price - self.promo_price) / self.product.price) * 100,
+                2
+            )
+        return 0

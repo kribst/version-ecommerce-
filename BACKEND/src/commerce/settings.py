@@ -38,11 +38,13 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'api',
+    'corsheaders',  # ajouté
     'rest_framework',           # <-- ajoute DRF
     'rest_framework.authtoken', # <-- optionnel : si tu veux TokenAuth
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -64,12 +66,28 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'api.context_processors.site_settings',
             ],
         },
     },
 ]
 
 WSGI_APPLICATION = 'commerce.wsgi.application'
+
+
+
+# Configuration minimale pour Django REST framework
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+        "rest_framework.authentication.TokenAuthentication",  # si utilisé
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticatedOrReadOnly",
+    ],
+}
+# ...existing code...
+
 
 
 # Database
@@ -105,13 +123,40 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'fr-fr'
 
 TIME_ZONE = 'UTC'
 
 USE_I18N = True
 
 USE_TZ = True
+
+# ...existing code...
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+
+# CORS / CSRF pour Next.js en dev
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+CORS_ALLOW_CREDENTIALS = True  # si tu utilises cookies/auth depuis le front
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8000",  # Ajouter pour l'admin
+    "http://127.0.0.1:8000",  # Ajouter pour l'admin
+]
+
+# Configuration des cookies pour l'admin (même domaine)
+# Pour l'admin Django, on garde les valeurs par défaut
+SESSION_COOKIE_SAMESITE = "Lax"  # Changé de "None" à "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"  # Changé de "None" à "Lax"
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
+
+
+
 
 
 # ... existing code ...

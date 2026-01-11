@@ -8,6 +8,8 @@ import WhatsAppLink from "./WhatsAppLink";
 import FacebookLink from "./FacebookLink";
 import LocationInfo from "./LocationInfo";
 import SearchBar from "./SearchBar/SearchBar";
+import Logo from "./logo/Logo";
+
 
 
 import { FaHeart, FaShoppingCart, FaUser, FaDollarSign, FaBars } from "react-icons/fa";
@@ -49,9 +51,7 @@ export default function Header() {
       <div className={styles.mainHeader}>
         <div className={styles.container}>
           {/* Logo */}
-          <Link href="/" className={styles.logo}>
-            Electro<span className={styles.dot}>.</span>
-          </Link>
+          <Logo />
 
           {/* Search bar */}
           <SearchBar />

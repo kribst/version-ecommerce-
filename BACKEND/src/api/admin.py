@@ -3,9 +3,23 @@ from django.utils.html import format_html
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.urls import path
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from decimal import InvalidOperation, Decimal
-from .models import SiteSettings, Category, Product, ProductImage
+from .models import SiteSettings, Category, Product, ProductImage, ProductCarousel, ProductPromotion
+
+# Personnaliser le titre de l'administration avec le nom de l'entreprise
+try:
+    site_settings = SiteSettings.load()
+    if site_settings and site_settings.company_name:
+        admin.site.site_header = f"{site_settings.company_name} Administration"
+        admin.site.site_title = f"{site_settings.company_name} Admin"
+    else:
+        admin.site.site_header = "Django Administration"
+        admin.site.site_title = "Django Admin"
+except:
+    # Si SiteSettings n'existe pas encore ou erreur, utiliser la valeur par défaut
+    admin.site.site_header = "Django Administration"
+    admin.site.site_title = "Django Admin"
 from .forms import CsvImportForm, ImageImportForm
 import csv
 import io
@@ -29,7 +43,6 @@ from urllib.parse import quote
 
 @admin.register(SiteSettings)
 class SiteSettingsAdmin(admin.ModelAdmin):
-
     # Affichage rapide dans la liste
     list_display = ("logo_thumbnail", "company_name", "phone", "email", "rc_number", "nif")
     list_display_links = ("company_name",)  # cliquer sur le nom pour éditer
@@ -82,6 +95,7 @@ class SiteSettingsAdmin(admin.ModelAdmin):
         if obj.logo:
             return format_html('<img src="{}" width="120" style="border-radius:6px;"/>', obj.logo.url)
         return "Aucun logo"
+
     logo_preview.short_description = "Prévisualisation du logo"
 
     # Aperçu du logo dans la liste
@@ -89,6 +103,7 @@ class SiteSettingsAdmin(admin.ModelAdmin):
         if obj.logo:
             return format_html('<img src="{}" width="50" style="border-radius:4px;"/>', obj.logo.url)
         return "—"
+
     logo_thumbnail.short_description = "Logo"
 
     # Recherche simple
@@ -100,9 +115,6 @@ class SiteSettingsAdmin(admin.ModelAdmin):
 
 # FIN Informations générales sur l'entreprise
 # FIN Informations générales sur l'entreprise
-
-
-
 
 
 # Informations générales sur les produits
@@ -147,8 +159,6 @@ class ProductImageInline(admin.TabularInline):
     extra = 1
     fields = ['image', 'alt_text', 'is_primary']
     readonly_fields = []
-
-
 
 
 # ==================== PRODUCT ====================
@@ -201,7 +211,7 @@ class ProductAdmin(admin.ModelAdmin):
                 obj.image_url, obj.image_url
             )
         return "Aucune URL"
-    
+
     image_url_display.short_description = "URL source de l'image"
 
     def get_queryset(self, request):
@@ -219,7 +229,7 @@ class ProductAdmin(admin.ModelAdmin):
                 except (InvalidOperation, ValueError, TypeError):
                     product.price = Decimal('0.00')
                     needs_update = True
-                
+
                 # Vérifier et corriger compare_at_price
                 try:
                     if product.compare_at_price is not None:
@@ -227,10 +237,10 @@ class ProductAdmin(admin.ModelAdmin):
                 except (InvalidOperation, ValueError, TypeError):
                     product.compare_at_price = None
                     needs_update = True
-                
+
                 if needs_update:
                     products_to_update.append(product)
-            
+
             # Mettre à jour les produits qui ont besoin de correction
             if products_to_update:
                 from django.db import transaction
@@ -243,7 +253,7 @@ class ProductAdmin(admin.ModelAdmin):
         except Exception:
             # En cas d'erreur lors du nettoyage, continuer quand même
             pass
-        
+
         return qs
 
     actions = ['make_active', 'make_inactive']
@@ -275,26 +285,26 @@ class ProductAdmin(admin.ModelAdmin):
             form = CsvImportForm(request.POST, request.FILES)
             if form.is_valid():
                 csv_file = request.FILES['csv_file']
-                
+
                 # Lire le fichier CSV
                 # Décoder en UTF-8 avec gestion d'erreurs
                 try:
                     file_data = csv_file.read().decode('utf-8-sig')  # utf-8-sig gère le BOM
                 except UnicodeDecodeError:
                     file_data = csv_file.read().decode('latin-1')
-                
+
                 io_string = io.StringIO(file_data)
                 reader = csv.DictReader(io_string)
-                
+
                 success_count = 0
                 error_count = 0
                 errors = []
-                
+
                 for row_num, row in enumerate(reader, start=2):  # start=2 car ligne 1 = header
                     try:
                         # Nettoyer les clés du dictionnaire (enlever espaces)
                         row = {k.strip(): v.strip() if isinstance(v, str) else v for k, v in row.items()}
-                        
+
                         # Récupérer les données
                         name = row.get('NOMS', '').strip()
                         category_name = row.get('Catégories', '').strip()
@@ -302,19 +312,19 @@ class ProductAdmin(admin.ModelAdmin):
                         description = row.get('Description', '').strip()
                         price_str = row.get('PRIX', '0').strip()
                         image_url = row.get('IMAGES', '').strip()
-                        
+
                         # Validation des champs obligatoires
                         if not name:
                             errors.append(f"Ligne {row_num}: Le nom du produit est requis")
                             error_count += 1
                             continue
-                        
+
                         # Vérifier si le produit existe déjà (nom unique)
                         if Product.objects.filter(name=name).exists():
                             errors.append(f"Ligne {row_num}: Le produit '{name}' existe déjà")
                             error_count += 1
                             continue
-                        
+
                         # Gérer la catégorie
                         category = None
                         if category_name:
@@ -325,7 +335,7 @@ class ProductAdmin(admin.ModelAdmin):
                                     'description': f'Catégorie importée automatiquement pour {category_name}'
                                 }
                             )
-                        
+
                         # Parser le prix (gérer les espaces dans les nombres comme "108 500")
                         try:
                             price_str_cleaned = price_str.replace(' ', '').replace(',', '.')
@@ -337,7 +347,7 @@ class ProductAdmin(admin.ModelAdmin):
                                 price = Decimal('0.00')
                         except (ValueError, AttributeError, InvalidOperation, TypeError):
                             price = Decimal('0.00')
-                        
+
                         # Créer le produit avec l'URL de l'image stockée
                         product = Product.objects.create(
                             name=name,
@@ -350,24 +360,24 @@ class ProductAdmin(admin.ModelAdmin):
                             is_active=True,
                             image_url=image_url if image_url else None  # IMPORTANT : Stocker l'URL
                         )
-                        
+
                         # Ne pas télécharger l'image maintenant - elle sera téléchargée via le bouton "Importer les images"
                         # L'URL est stockée dans image_url pour un téléchargement ultérieur
-                        
+
                         success_count += 1
-                        
+
                     except Exception as e:
                         error_count += 1
                         errors.append(f"Ligne {row_num}: Erreur - {str(e)}")
                         continue
-                
+
                 # Afficher les messages
                 if success_count > 0:
                     messages.success(
                         request,
                         f'{success_count} produit(s) importé(s) avec succès.'
                     )
-                
+
                 if errors:
                     error_msg = f'{error_count} erreur(s) rencontrée(s):<ul>'
                     for error in errors[:10]:  # Limiter à 10 erreurs
@@ -376,11 +386,11 @@ class ProductAdmin(admin.ModelAdmin):
                         error_msg += f'<li>... et {len(errors) - 10} autre(s) erreur(s)</li>'
                     error_msg += '</ul>'
                     messages.error(request, format_html(error_msg))
-                
+
                 return redirect('admin:api_product_changelist')
         else:
             form = CsvImportForm()
-        
+
         context = {
             'form': form,
             'opts': self.model._meta,
@@ -392,7 +402,7 @@ class ProductAdmin(admin.ModelAdmin):
         """Vue pour uploader des images depuis l'ordinateur et les mapper aux produits"""
         if request.method == 'POST':
             form = ImageImportForm(request.POST, request.FILES)
-            
+
             # Récupérer les fichiers depuis le formulaire validé ou directement depuis request.FILES
             if form.is_valid():
                 uploaded_files = form.cleaned_data.get('images', [])
@@ -402,47 +412,49 @@ class ProductAdmin(admin.ModelAdmin):
             else:
                 # Si le formulaire n'est pas valide mais qu'il y a des fichiers, les récupérer directement
                 uploaded_files = request.FILES.getlist('images') if 'images' in request.FILES else []
-            
+
             if not uploaded_files:
                 messages.error(request, "Aucune image sélectionnée. Veuillez sélectionner au moins une image.")
             else:
-                
+
                 # Créer un dictionnaire de mapping : nom_fichier_sans_extension -> fichier
                 # Exemple: "FG40F" -> <fichier uploadé>
                 files_map = {}
                 for uploaded_file in uploaded_files:
                     # Extraire le nom sans extension pour le mapping
-                    filename_without_ext = uploaded_file.name.rsplit('.', 1)[0] if '.' in uploaded_file.name else uploaded_file.name
+                    filename_without_ext = uploaded_file.name.rsplit('.', 1)[
+                        0] if '.' in uploaded_file.name else uploaded_file.name
                     files_map[filename_without_ext] = uploaded_file
-                
+
                 # Récupérer les produits qui ont une valeur dans image_url (qui est en fait l'identifiant/nom de l'image)
                 products = Product.objects.filter(image_url__isnull=False).exclude(image_url='')
-                
+
                 success_count = 0
                 error_count = 0
                 errors = []
                 unmatched_images = []
-                
+
                 # Parcourir les produits et mapper les images
                 for product in products:
                     if not product.image_url:
                         continue
-                    
+
                     # Extraire l'identifiant de l'image (peut être un nom de fichier ou une URL)
                     # Si c'est une URL, extraire le nom du fichier
                     image_identifier = product.image_url.strip()
-                    
+
                     # Si c'est une URL, extraire le nom du fichier
                     if image_identifier.startswith('http://') or image_identifier.startswith('https://'):
                         parsed_url = urlparse(image_identifier)
                         image_identifier = parsed_url.path.split('/')[-1]
-                    
+
                     # Enlever l'extension pour le matching
-                    image_identifier_without_ext = image_identifier.rsplit('.', 1)[0] if '.' in image_identifier else image_identifier
-                    
+                    image_identifier_without_ext = image_identifier.rsplit('.', 1)[
+                        0] if '.' in image_identifier else image_identifier
+
                     # Chercher le fichier correspondant (avec ou sans extension)
                     matched_file = None
-                    
+
                     # Essayer avec le nom exact (sans extension)
                     if image_identifier_without_ext in files_map:
                         matched_file = files_map[image_identifier_without_ext]
@@ -454,10 +466,11 @@ class ProductAdmin(admin.ModelAdmin):
                                 matched_file = file_obj
                                 break
                             # Aussi essayer avec le nom du fichier uploadé complet
-                            if file_obj.name.rsplit('.', 1)[0].lower().strip() == image_identifier_without_ext.lower().strip():
+                            if file_obj.name.rsplit('.', 1)[
+                                0].lower().strip() == image_identifier_without_ext.lower().strip():
                                 matched_file = file_obj
                                 break
-                    
+
                     if matched_file:
                         try:
                             # Générer un nom de fichier unique pour éviter les collisions
@@ -473,7 +486,7 @@ class ProductAdmin(admin.ModelAdmin):
                                 filename = f'{name_part}_{product.id}.{ext}'
                             else:
                                 filename = f'{name_part}_{product.id}.jpg'
-                            
+
                             # Sauvegarder l'image
                             product.image.save(
                                 filename,
@@ -488,18 +501,18 @@ class ProductAdmin(admin.ModelAdmin):
                         # Image non trouvée pour ce produit
                         unmatched_images.append(f"Produit '{product.name}' (identifiant: {image_identifier})")
                         error_count += 1
-                
+
                 # Vérifier les images uploadées qui n'ont pas été utilisées
                 used_files = set()
                 for product in Product.objects.filter(image_url__isnull=False).exclude(image_url=''):
                     if product.image:
                         used_files.add(product.image.name.split('/')[-1])
-                
+
                 unused_images = []
                 for uploaded_file in uploaded_files:
                     if uploaded_file.name not in used_files:
                         unused_images.append(uploaded_file.name)
-                
+
                 # Afficher les messages
                 if success_count > 0:
                     messages.success(
@@ -515,7 +528,7 @@ class ProductAdmin(admin.ModelAdmin):
                         error_msg += f'<li>... et {len(unmatched_images) - 10} autre(s)</li>'
                     error_msg += '</ul>'
                     messages.warning(request, format_html(error_msg))
-                
+
                 if unused_images:
                     unused_msg = f'{len(unused_images)} image(s) uploadée(s) non utilisée(s):<ul>'
                     for unused in unused_images[:5]:
@@ -524,7 +537,7 @@ class ProductAdmin(admin.ModelAdmin):
                         unused_msg += f'<li>... et {len(unused_images) - 5} autre(s)</li>'
                     unused_msg += '</ul><p>Vérifiez que les noms des fichiers correspondent aux identifiants dans la colonne IMAGES de votre CSV.</p>'
                     messages.info(request, format_html(unused_msg))
-                
+
                 if errors:
                     error_msg = f'{len(errors)} erreur(s):<ul>'
                     for error in errors[:10]:
@@ -541,7 +554,7 @@ class ProductAdmin(admin.ModelAdmin):
         # Compter les produits pour les statistiques
         products_with_urls = Product.objects.filter(image_url__isnull=False).exclude(image_url='')
         products_without_images = [p for p in products_with_urls if not p.image]
-        
+
         # Lister les identifiants d'images attendus
         expected_image_ids = [p.image_url for p in products_without_images if p.image_url]
 
@@ -559,37 +572,37 @@ class ProductAdmin(admin.ModelAdmin):
         """Vue pour afficher toutes les images du dossier media/products/"""
         # Chemin du dossier products
         products_dir = settings.MEDIA_ROOT / 'products'
-        
+
         # Créer le dossier s'il n'existe pas
         products_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Lister tous les fichiers image
         image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg'}
         files_data = []
-        
+
         if products_dir.exists():
             for file_path in products_dir.iterdir():
                 if file_path.is_file() and file_path.suffix.lower() in image_extensions:
                     # Obtenir les informations du fichier
                     stat = file_path.stat()
-                    
+
                     # Date de modification du fichier
                     modified_time = datetime.fromtimestamp(stat.st_mtime, tz=timezone.get_current_timezone())
-                    
+
                     # Taille du fichier
                     size_bytes = stat.st_size
                     size_mb = round(size_bytes / (1024 * 1024), 2)
-                    
+
                     # Nom du fichier
                     filename = file_path.name
-                    
+
                     # URL du fichier
                     relative_path = f'products/{filename}'
                     file_url = f"{settings.MEDIA_URL}{relative_path}"
                     # URL encodée pour l'affichage dans le navigateur
                     encoded_filename = quote(filename, safe='')
                     full_url = f"{settings.MEDIA_URL}products/{encoded_filename}"
-                    
+
                     files_data.append({
                         'name': filename,
                         'url': file_url,
@@ -599,15 +612,15 @@ class ProductAdmin(admin.ModelAdmin):
                         'modified_date': modified_time,
                         'created_date': datetime.fromtimestamp(stat.st_ctime, tz=timezone.get_current_timezone()),
                     })
-        
+
         # Trier par date de modification (plus récent en premier)
         files_data.sort(key=lambda x: x['modified_date'], reverse=True)
-        
+
         # Pagination
         paginator = Paginator(files_data, 24)  # 24 images par page
         page_number = request.GET.get('page', 1)
         page_obj = paginator.get_page(page_number)
-        
+
         context = {
             **self.admin_site.each_context(request),
             'title': 'Images importées - Produits',
@@ -618,7 +631,7 @@ class ProductAdmin(admin.ModelAdmin):
             'has_change_permission': self.has_change_permission(request, None),
             'has_delete_permission': self.has_delete_permission(request, None),
         }
-        
+
         return render(request, 'admin/product_files_list.html', context)
 
     def delete_product_file_view(self, request):
@@ -626,22 +639,22 @@ class ProductAdmin(admin.ModelAdmin):
         if not request.method == 'POST':
             messages.error(request, "Méthode non autorisée.")
             return redirect('admin:product_files_view')
-        
+
         if not self.has_delete_permission(request, None):
             messages.error(request, "Vous n'avez pas la permission de supprimer des fichiers.")
             return redirect('admin:product_files_view')
-        
+
         file_name = request.POST.get('file_name')
         if not file_name:
             messages.error(request, "Nom de fichier manquant.")
             return redirect('admin:product_files_view')
-        
+
         # Sécuriser le nom du fichier (empêcher les paths relatifs)
         file_name = os.path.basename(file_name)
-        
+
         # Chemin complet du fichier
         file_path = settings.MEDIA_ROOT / 'products' / file_name
-        
+
         # Vérifier que le fichier existe et est dans le bon dossier
         if file_path.exists() and file_path.parent == settings.MEDIA_ROOT / 'products':
             try:
@@ -649,7 +662,7 @@ class ProductAdmin(admin.ModelAdmin):
                 products_using_image = Product.objects.filter(
                     image__icontains=file_name
                 )
-                
+
                 if products_using_image.exists():
                     # Supprimer la référence dans les produits
                     for product in products_using_image:
@@ -657,7 +670,7 @@ class ProductAdmin(admin.ModelAdmin):
                             product.image.delete(save=False)
                             product.image = None
                             product.save()
-                
+
                 # Supprimer le fichier
                 file_path.unlink()
                 messages.success(request, f"L'image '{file_name}' a été supprimée avec succès.")
@@ -665,32 +678,32 @@ class ProductAdmin(admin.ModelAdmin):
                 messages.error(request, f"Erreur lors de la suppression: {str(e)}")
         else:
             messages.error(request, "Fichier introuvable ou chemin invalide.")
-        
+
         return redirect('admin:product_files_view')
 
     def changelist_view(self, request, extra_context=None):
         """Override pour gérer les erreurs InvalidOperation"""
         extra_context = extra_context or {}
         extra_context['show_import_button'] = True
-        
+
         try:
             return super().changelist_view(request, extra_context=extra_context)
         except InvalidOperation as e:
             # Si une erreur InvalidOperation se produit, nettoyer les données et réessayer
             from django.db import transaction, connection
-            
+
             try:
                 with transaction.atomic():
                     # Utiliser SQL brut pour éviter de charger les objets avec des valeurs Decimal invalides
                     cursor = connection.cursor()
                     fixed_count = 0
-                    
+
                     # Utiliser SQL brut pour éviter de charger les objets avec des valeurs Decimal invalides
                     # Récupérer les IDs des produits sans charger les champs Decimal problématiques
                     try:
                         cursor.execute("SELECT id FROM api_product")
                         product_ids = [row[0] for row in cursor.fetchall()]
-                        
+
                         # Pour chaque produit, essayer de mettre à jour avec des valeurs par défaut
                         # On utilise ORM update qui évite de charger l'objet complet
                         for product_id in product_ids:
@@ -717,13 +730,13 @@ class ProductAdmin(admin.ModelAdmin):
                     except Exception:
                         # Si tout échoue, afficher un message mais ne pas bloquer
                         pass
-                    
+
                     if fixed_count > 0:
                         messages.info(
                             request,
                             f'{fixed_count} produit(s) avec des valeurs de prix invalides ont été corrigés automatiquement.'
                         )
-                    
+
                 # Réessayer après le nettoyage
                 return super().changelist_view(request, extra_context=extra_context)
             except Exception as cleanup_error:
@@ -742,4 +755,210 @@ class ProductAdmin(admin.ModelAdmin):
 # FIN Informations générales sur les produits
 
 
+# Produit carousel
+# Produit carousel
 
+
+# ==================== PRODUCT CAROUSEL ====================
+
+@admin.register(ProductCarousel)
+class ProductCarouselAdmin(admin.ModelAdmin):
+    list_display = [
+        'product',
+        'product_price',
+        'image_preview',
+        'comment_1',
+        'comment_2',
+        'position',
+        'is_active'
+    ]
+
+    list_filter = ['is_active']
+    search_fields = ['product__name', 'comment_1', 'comment_2']
+    list_editable = ['position', 'is_active']
+    ordering = ['position']
+
+    readonly_fields = ['image_preview', 'product_price']
+
+    fieldsets = (
+        ('Produit', {
+            'fields': ('product', 'product_price')
+        }),
+        ('Contenu marketing', {
+            'fields': ('comment_1', 'comment_2')
+        }),
+        ('Affichage', {
+            'fields': ('position', 'is_active')
+        }),
+        ('Aperçu', {
+            'fields': ('image_preview',)
+        }),
+    )
+
+    # 💰 Prix du produit (lecture seule)
+    def product_price(self, obj):
+        return obj.product.price
+
+    product_price.short_description = "Prix"
+
+    # 🖼️ Image du produit (preview)
+    def image_preview(self, obj):
+        image_url = obj.image  # utilise la property du model
+        if image_url:
+            return format_html(
+                '<img src="{}" style="height:50px;width:auto;border-radius:4px;" />',
+                image_url
+            )
+        return "Aucune image"
+
+    image_preview.short_description = "Image"
+
+
+# Produit promotion
+# Produit promotion
+
+
+@admin.register(ProductPromotion)
+class ProductPromotionAdmin(admin.ModelAdmin):
+    list_display = (
+        'product',
+        'product_image',
+        'original_price',
+        'promo_price',
+        'discount_percent_display',
+        'label',
+        'is_active',
+        'is_featured',
+        'start_date',
+        'end_date',
+    )
+
+    list_filter = (
+        'is_active',
+        'is_featured',
+        'start_date',
+        'end_date',
+    )
+
+    search_fields = (
+        'product__name',
+        'label',
+    )
+
+    ordering = ('-created_at',)
+
+    readonly_fields = (
+        'original_price',
+        'discount_percent_display',
+        'created_at',
+        'product_image_preview',
+    )
+
+    fieldsets = (
+        ('Produit', {
+            'fields': ('product', 'product_image_preview')
+        }),
+        ('Prix', {
+            'fields': ('original_price', 'promo_price', 'discount_percent_display')
+        }),
+        ('Promotion', {
+            'fields': ('label', 'is_active', 'is_featured')
+        }),
+        ('Période de validité', {
+            'fields': ('start_date', 'end_date')
+        }),
+        ('Informations système', {
+            'fields': ('created_at',)
+        }),
+    )
+
+    class Media:
+        js = ("admin/product_promo.js",)
+
+    # 🔹 IMAGE DANS LA LISTE
+    def product_image(self, obj):
+        image = self._get_product_image(obj)
+        if image:
+            return format_html(
+                '<img src="{}" style="height:50px;width:auto;border-radius:4px;" />',
+                image
+            )
+        return "—"
+
+    product_image.short_description = "Image"
+
+    # 🔹 IMAGE DANS LE FORMULAIRE
+    def product_image_preview(self, obj):
+        image = self._get_product_image(obj)
+        if image:
+            return format_html(
+                '<img src="{}" style="max-height:200px;border-radius:8px;" />',
+                image
+            )
+        return "Aucune image"
+
+    product_image_preview.short_description = "Aperçu du produit"
+
+    # 🔹 PRIX ORIGINAL
+    def original_price(self, obj):
+        return obj.product.price
+
+    original_price.short_description = "Prix original"
+
+    # 🔹 RÉDUCTION
+    def discount_percent_display(self, obj):
+        return f"{obj.discount_percent} %"
+
+    discount_percent_display.short_description = "Réduction"
+
+    # 🔹 LOGIQUE IMAGE (réutilisable)
+    def _get_product_image(self, obj):
+        primary = obj.product.images.filter(is_primary=True).first()
+        if primary:
+            return primary.image.url
+
+        first = obj.product.images.first()
+        if first:
+            return first.image.url
+
+        # Utilise image_display_url qui gère image ET image_url
+        return obj.product.image_display_url
+
+    # 🔹 PRÉ-REMPLIR promo_price
+    def get_changeform_initial_data(self, request):
+        initial = super().get_changeform_initial_data(request)
+
+        product_id = request.GET.get('product')
+        if product_id:
+            try:
+                product = Product.objects.get(pk=product_id)
+                initial['promo_price'] = product.price
+            except Product.DoesNotExist:
+                pass
+
+        return initial
+
+    # 🔹 SÉCURITÉ À L'ENREGISTREMENT
+    def save_model(self, request, obj, form, change):
+        if not obj.promo_price:
+            obj.promo_price = obj.product.price
+        super().save_model(request, obj, form, change)
+
+    # 🔹 ENDPOINT INTERNE POUR OBTENIR LE PRIX PRODUIT (AJAX)
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                "product-price/<int:pk>/",
+                self.admin_site.admin_view(self.product_price_view),
+                name="product-price",
+            ),
+        ]
+        return custom_urls + urls
+
+    def product_price_view(self, request, pk):
+        try:
+            product = Product.objects.get(pk=pk)
+            return JsonResponse({"price": float(product.price)})
+        except Product.DoesNotExist:
+            return JsonResponse({"price": None}, status=404)

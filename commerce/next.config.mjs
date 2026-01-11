@@ -9,9 +9,21 @@ const nextConfig = {
         pathname: '/media/**',
       },
       {
+        protocol: 'http',
+        hostname: '127.0.0.1',
+        port: '9000',
+        pathname: '/media/**',
+      },
+      {
         protocol: 'https',
         hostname: '127.0.0.1',
         port: '8000',
+        pathname: '/media/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '127.0.0.1',
+        port: '9000',
         pathname: '/media/**',
       },
       {
@@ -21,9 +33,21 @@ const nextConfig = {
         pathname: '/media/**',
       },
       {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '9000',
+        pathname: '/media/**',
+      },
+      {
         protocol: 'https',
         hostname: 'localhost',
         port: '8000',
+        pathname: '/media/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'localhost',
+        port: '9000',
         pathname: '/media/**',
       },
     ],
