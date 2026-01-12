@@ -161,13 +161,8 @@ class ProductPromotionSerializer(serializers.ModelSerializer):
         return obj.product.image_display_url
 
 
-
-
 # Produit categorie
 # Produit categorie
-
-
-
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:

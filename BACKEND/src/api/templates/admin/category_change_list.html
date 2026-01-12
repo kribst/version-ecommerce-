@@ -1,0 +1,20 @@
+{% extends "admin/change_list.html" %}
+
+{% block object-tools-items %}
+    {{ block.super }}
+    <li>
+        <a href="{% url 'admin:category_import_csv' %}" class="addlink">
+            Importer les catégories (CSV)
+        </a>
+    </li>
+    <li>
+        <a href="{% url 'admin:category_import_images' %}" class="addlink">
+            Importer les images
+        </a>
+    </li>
+    <li>
+        <a href="{% url 'admin:category_files_view' %}" class="viewlink">
+            Voir les images importées
+        </a>
+    </li>
+{% endblock %}

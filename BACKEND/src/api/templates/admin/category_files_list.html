@@ -1,0 +1,128 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block title %}Images importées - Catégories | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+&rsaquo; <a href="{% url 'admin:api_category_changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+&rsaquo; Images importées
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="category-files-container">
+    <h1>Images importées dans /media/categories/</h1>
+    <p style="margin-bottom: 20px;"><strong>Total : {{ total_files }} image(s)</strong></p>
+
+    {% if files %}
+    <div class="files-grid" style="display: grid; gap: 12px; margin-top: 20px;">
+        {% for file in files %}
+        <div class="file-card" style="border: 1px solid #ddd; padding: 10px; border-radius: 6px; text-align: center; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div class="file-image" style="margin-bottom: 10px;">
+                <img src="{{ file.full_url }}" alt="{{ file.name }}"
+                     style="max-width: 100%; max-height: 120px; width: 100%; object-fit: contain; border-radius: 4px; border: 1px solid #eee;" />
+            </div>
+            <div class="file-info" style="text-align: left;">
+                <strong style="display: block; margin-bottom: 6px; word-break: break-word; font-size: 11px; color: #333; line-height: 1.3;">
+                    {{ file.name }}
+                </strong>
+                <p style="font-size: 9px; color: #666; margin: 3px 0; line-height: 1.4;">
+                    <strong>Date :</strong><br>
+                    {{ file.modified_date|date:"d/m/Y H:i" }}
+                </p>
+                <p style="font-size: 9px; color: #666; margin: 3px 0;">
+                    <strong>Taille :</strong> {{ file.size_mb }} MB
+                </p>
+                <div style="margin: 10px 0 8px 0; padding-top: 8px; border-top: 1px solid #eee;">
+                    <a href="{{ file.full_url }}" target="_blank"
+                       style="display: inline-block; padding: 4px 8px; background: #417690; color: white; text-decoration: none; border-radius: 3px; font-size: 10px; margin-bottom: 6px; width: 100%; text-align: center; box-sizing: border-box;">
+                        Voir
+                    </a>
+                </div>
+                <form method="post" action="{% url 'admin:category_files_delete' %}"
+                      style="margin-top: 6px;"
+                      onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer l\\'image \\'{{ file.name }}\\' ?');">
+                    {% csrf_token %}
+                    <input type="hidden" name="file_name" value="{{ file.name }}" />
+                    <button type="submit"
+                            style="background: #ba2121; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 10px; width: 100%;">
+                        Supprimer
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if files.has_other_pages %}
+    <div class="pagination" style="margin-top: 30px; text-align: center; padding: 20px;">
+        {% if files.has_previous %}
+            <a href="?page=1" style="margin: 0 5px; padding: 8px 15px; background: #417690; color: white; text-decoration: none; border-radius: 4px;">&laquo; Première</a>
+            <a href="?page={{ files.previous_page_number }}" style="margin: 0 5px; padding: 8px 15px; background: #417690; color: white; text-decoration: none; border-radius: 4px;">Précédente</a>
+        {% endif %}
+
+        <span style="margin: 0 15px; padding: 8px 15px; background: #f5f5f5; border-radius: 4px;">
+            Page {{ files.number }} sur {{ files.paginator.num_pages }}
+        </span>
+
+        {% if files.has_next %}
+            <a href="?page={{ files.next_page_number }}" style="margin: 0 5px; padding: 8px 15px; background: #417690; color: white; text-decoration: none; border-radius: 4px;">Suivante</a>
+            <a href="?page={{ files.paginator.num_pages }}" style="margin: 0 5px; padding: 8px 15px; background: #417690; color: white; text-decoration: none; border-radius: 4px;">Dernière &raquo;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+    {% else %}
+    <div style="margin-top: 20px; padding: 30px; background: #f0f0f0; border-radius: 8px; text-align: center;">
+        <p style="font-size: 16px; color: #666;">
+            Aucune image trouvée dans le dossier /media/categories/
+        </p>
+        <p style="margin-top: 15px;">
+            <a href="{% url 'admin:category_import_images' %}" class="button" style="padding: 10px 20px; background: #417690; color: white; text-decoration: none; border-radius: 4px;">
+                Importer des images
+            </a>
+        </p>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+    .files-grid {
+        margin-top: 20px;
+        grid-template-columns: repeat(6, 1fr);
+    }
+    .file-card:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
+        transform: translateY(-2px);
+        transition: all 0.3s ease;
+    }
+    @media (max-width: 1600px) {
+        .files-grid {
+            grid-template-columns: repeat(5, 1fr) !important;
+        }
+    }
+    @media (max-width: 1280px) {
+        .files-grid {
+            grid-template-columns: repeat(4, 1fr) !important;
+        }
+    }
+    @media (max-width: 992px) {
+        .files-grid {
+            grid-template-columns: repeat(3, 1fr) !important;
+        }
+    }
+    @media (max-width: 768px) {
+        .files-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+        }
+    }
+    @media (max-width: 480px) {
+        .files-grid {
+            grid-template-columns: 1fr !important;
+        }
+    }
+</style>
+{% endblock %}

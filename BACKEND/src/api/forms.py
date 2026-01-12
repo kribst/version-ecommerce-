@@ -76,3 +76,10 @@ class ImageImportForm(forms.Form):
         help_text='Sélectionnez une ou plusieurs images à uploader. Les images seront associées aux produits selon leur nom (qui doit correspondre au champ IMAGES du CSV).',
         required=True
     )
+
+
+class CategoryCsvImportForm(forms.Form):
+    csv_file = forms.FileField(
+        label='Fichier CSV',
+        help_text='Colonnes attendues: nom, categorie_parent (optionnel), sous_parent (optionnel), image (URL optionnelle)'
+    )

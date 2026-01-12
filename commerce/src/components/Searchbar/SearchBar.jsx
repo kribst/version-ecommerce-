@@ -1,27 +1,32 @@
 "use client";
 
 import React from "react";
+import { FaSearch } from "react-icons/fa";
 import styles from "./SearchBar.module.css";
+import CategorySelect from "./CategorySelect";
 
 
 export default function SearchBar() {
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    // Handle search logic here
+  };
+
   return (
-    <div className={styles.searchBar}>
-            <select className={styles.categorySelect}>
-              <option>All Categories</option>
-              <option>Category 01</option>
-              <option>Category 02</option>
-              <option>Category 03</option>
-            </select>
-            <div className={styles.searchDivider}></div>
-            <input
-              type="text"
-              placeholder="Search here..."
-              className={styles.searchInput}
-            />
-            <button className={styles.searchButton} type="submit">
-              Search
-            </button>
-    </div>
+    <form className={styles.searchBar} onSubmit={handleSubmit}>
+      <div className={styles.categoryWrapper}>
+        <CategorySelect />
+      </div>
+      <div className={styles.searchDivider}></div>
+      <input
+        type="text"
+        placeholder="Enter your search key..."
+        className={styles.searchInput}
+      />
+      <button className={styles.searchButton} type="submit">
+        <FaSearch className={styles.searchIcon} />
+        <span className={styles.searchText}>Search</span>
+      </button>
+    </form>
   );
 }

@@ -7,7 +7,7 @@ import EmailLink from "./EmailLink";
 import WhatsAppLink from "./WhatsAppLink";
 import FacebookLink from "./FacebookLink";
 import LocationInfo from "./LocationInfo";
-import SearchBar from "./SearchBar/SearchBar";
+import SearchBar from "./Searchbar/SearchBar";
 import Logo from "./logo/Logo";
 
 

@@ -3,8 +3,9 @@ from django.utils.timezone import now
 from rest_framework import viewsets, status, permissions, filters
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from .models import SiteSettings, ProductCarousel, ProductPromotion
-from .serializers import SiteSettingsSerializer, ProductCarouselSerializer, ProductPromotionSerializer
+from .models import SiteSettings, ProductCarousel, ProductPromotion, Category
+from .serializers import SiteSettingsSerializer, ProductCarouselSerializer, ProductPromotionSerializer, \
+    CategorySerializer
 
 
 # Create your views here.
@@ -129,3 +130,15 @@ class ProductPromotionViewSet(viewsets.ReadOnlyModelViewSet):
         ).filter(
             end_date__gte=today
         ).select_related('product').order_by('-created_at')
+
+
+
+# Produit categorie
+# Produit categorie
+
+
+class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    permission_classes = [AllowAny]
+    lookup_field = 'slug'

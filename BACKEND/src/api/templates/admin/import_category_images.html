@@ -1,0 +1,89 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static admin_modify %}
+
+{% block title %}Importer les images de catégories | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+&rsaquo; <a href="{% url 'admin:api_category_changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+&rsaquo; Importer images
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>Importer les images de catégories</h1>
+
+<div class="module aligned">
+    <h2>Statistiques</h2>
+    <ul>
+        <li><strong>{{ categories_total }}</strong> catégorie(s) au total</li>
+        <li><strong>{{ categories_without_images }}</strong> catégorie(s) sans image locale</li>
+    </ul>
+    
+    {% if category_names %}
+    <h2>Instructions</h2>
+    <div class="help">
+        <p><strong>Comment ça fonctionne :</strong></p>
+        <ol>
+            <li>Sélectionnez une ou plusieurs images depuis votre ordinateur</li>
+            <li>Les images seront automatiquement associées aux catégories selon leur nom</li>
+            <li>Le nom du fichier (sans extension) doit correspondre au nom de la catégorie</li>
+        </ol>
+        <p><strong>Exemples de catégories sans images :</strong></p>
+        <ul style="max-height: 150px; overflow-y: auto; background: #f5f5f5; padding: 10px; border: 1px solid #ddd;">
+            {% for cat_name in category_names %}
+            <li><code>{{ cat_name }}</code></li>
+            {% endfor %}
+            {% if categories_without_images > 20 %}
+            <li><em>... et {{ categories_without_images|add:"-20" }} autre(s)</em></li>
+            {% endif %}
+        </ul>
+        <p><strong>Exemple :</strong> Si vous avez une catégorie nommée "Électronique", vous pouvez uploader un fichier nommé <code>Électronique.jpg</code>, <code>electronique.png</code>, ou simplement <code>electronique</code> (n'importe quelle extension). La correspondance est flexible (insensible à la casse et aux accents).</p>
+    </div>
+    {% endif %}
+</div>
+
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <fieldset class="module aligned">
+        <div class="form-row">
+            <div>
+                {{ form.images.label_tag }}
+                {{ form.images }}
+                {% if form.images.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.images.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+                {% if form.images.help_text %}
+                    <p class="help">{{ form.images.help_text }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </fieldset>
+
+    <div class="submit-row">
+        <input type="submit" value="Importer les images" class="default" />
+        <a href="{% url 'admin:api_category_changelist' %}" class="button">Annuler</a>
+    </div>
+</form>
+
+<script>
+// Ajouter un feedback visuel lors de la sélection de fichiers
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.querySelector('input[type="file"]');
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                console.log(files.length + ' fichier(s) sélectionné(s)');
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
