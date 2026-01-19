@@ -1,0 +1,53 @@
+{% extends "admin/change_form.html" %}
+{% load i18n admin_urls static admin_modify %}
+
+{% block content %}
+    {% if show_table and table_data %}
+    <div style="margin: 20px 0; background: white; padding: 20px; border: 1px solid #ddd; border-radius: 4px;">
+        <h2 style="margin-top: 0;">Informations du Flash Promotion</h2>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+            <thead>
+                <tr style="background-color: #f5f5f5; border-bottom: 2px solid #ddd;">
+                    <th style="padding: 12px; text-align: left; border: 1px solid #ddd; font-weight: bold;">Champ</th>
+                    <th style="padding: 12px; text-align: left; border: 1px solid #ddd; font-weight: bold;">Valeur</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="padding: 12px; border: 1px solid #ddd; font-weight: bold; width: 30%;">Titre</td>
+                    <td style="padding: 12px; border: 1px solid #ddd;">{{ table_data.title }}</td>
+                </tr>
+                <tr style="background-color: #f9f9f9;">
+                    <td style="padding: 12px; border: 1px solid #ddd; font-weight: bold;">Produit principal</td>
+                    <td style="padding: 12px; border: 1px solid #ddd;">{{ table_data.main_product }}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 12px; border: 1px solid #ddd; font-weight: bold;">Date de début (produit principal)</td>
+                    <td style="padding: 12px; border: 1px solid #ddd;">{{ table_data.main_start_date }}</td>
+                </tr>
+                <tr style="background-color: #f9f9f9;">
+                    <td style="padding: 12px; border: 1px solid #ddd; font-weight: bold;">Date de fin (produit principal)</td>
+                    <td style="padding: 12px; border: 1px solid #ddd;">{{ table_data.main_end_date }}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 12px; border: 1px solid #ddd; font-weight: bold;">Date de début (produits secondaires)</td>
+                    <td style="padding: 12px; border: 1px solid #ddd;">{{ table_data.secondary_start_date }}</td>
+                </tr>
+                <tr style="background-color: #f9f9f9;">
+                    <td style="padding: 12px; border: 1px solid #ddd; font-weight: bold;">Date de fin (produits secondaires)</td>
+                    <td style="padding: 12px; border: 1px solid #ddd;">{{ table_data.secondary_end_date }}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 12px; border: 1px solid #ddd; font-weight: bold;">Produits secondaires</td>
+                    <td style="padding: 12px; border: 1px solid #ddd;">{{ table_data.secondary_products }}</td>
+                </tr>
+                <tr style="background-color: #f9f9f9;">
+                    <td style="padding: 12px; border: 1px solid #ddd; font-weight: bold;">Statut actif</td>
+                    <td style="padding: 12px; border: 1px solid #ddd;">{{ table_data.is_active }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+    {{ block.super }}
+{% endblock %}

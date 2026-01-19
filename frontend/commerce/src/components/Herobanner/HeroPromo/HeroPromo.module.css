@@ -1,0 +1,272 @@
+/* ========== HERO PROMO MODULE CSS ========== */
+.promoContainer {
+    width: 100% !important;
+    height: 100%;
+    min-height: 380px;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+    background: #F8F8F8;
+  }
+
+  @media (max-width: 992px) {
+    .promoContainer {
+      min-height: 340px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .promoContainer {
+      min-height: 320px;
+    }
+  }
+
+  @media (max-width: 576px) {
+    .promoContainer {
+      min-height: 300px;
+    }
+  }
+
+  .promoImage {
+    width: 85%;
+    height: 75%;
+    max-width: 320px;
+    max-height: 280px;
+    object-fit: contain;
+    object-position: center;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    background: rgba(255, 255, 255, 0.8);
+    padding: 20px;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    filter: brightness(1.02) contrast(1.01);
+  }
+
+  .promoImage:hover {
+    transform: translate(-50%, -50%) scale(1.03);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+    filter: brightness(1.05) contrast(1.03);
+  }
+
+  @media (max-width: 992px) {
+    .promoImage {
+      width: 80%;
+      height: 70%;
+      max-width: 280px;
+      max-height: 240px;
+      padding: 15px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .promoImage {
+      width: 75%;
+      height: 65%;
+      max-width: 240px;
+      max-height: 200px;
+      padding: 12px;
+      border-radius: 12px;
+    }
+  }
+
+  @media (max-width: 576px) {
+    .promoImage {
+      width: 70%;
+      height: 60%;
+      max-width: 200px;
+      max-height: 180px;
+      padding: 10px;
+      border-radius: 10px;
+    }
+  }
+  
+    .cartBtn {
+      background: linear-gradient(135deg, #D10024 0%, #E91E3F 100%);
+      color: white;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 25px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 3px 10px rgba(209, 0, 36, 0.25);
+      text-decoration: none;
+      letter-spacing: 0.3px;
+    }
+    
+    .cartBtn:hover {
+      background: linear-gradient(135deg, #B8001F 0%, #D10024 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(209, 0, 36, 0.35);
+      color: white;
+      text-decoration: none;
+    }
+
+    .cartBtn:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 8px rgba(209, 0, 36, 0.25);
+    }
+
+    .navBtnPromo {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.7);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+      font-size: 12px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .navBtnPromo:hover {
+      background: rgba(255, 255, 255, 1);
+      color: #2B2D42;
+      border-color: rgba(255, 255, 255, 1);
+      transform: scale(1.08);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .navBtnPromo:active {
+      transform: scale(1.02);
+    }
+    
+    .saveBadge {
+      background: linear-gradient(135deg, #D10024 0%, #E91E3F 100%);
+      color: white;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      box-shadow: 0 2px 8px rgba(209, 0, 36, 0.3);
+      letter-spacing: 0.5px;
+    }
+    
+    .offerBadge {
+      background: linear-gradient(135deg, #ff9800 0%, #ffb74d 100%);
+      color: white;
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      box-shadow: 0 2px 6px rgba(255, 152, 0, 0.3);
+      letter-spacing: 0.3px;
+    }
+
+    /* ========== TYPOGRAPHY ========== */
+    .promoLabel {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3em;
+      color: #6c757d;
+      display: block;
+      margin-bottom: 0.75rem;
+      opacity: 0.85;
+    }
+
+    .promoTitle {
+      font-size: 1.25rem;
+      font-weight: 700;
+      line-height: 1.4;
+      color: #2B2D42;
+      margin-bottom: 1rem;
+      letter-spacing: -0.02em;
+    }
+
+    .priceContainer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .originalPrice {
+      font-size: 0.875rem;
+      color: #9ca3af;
+      text-decoration: line-through;
+      opacity: 0.7;
+    }
+
+    .promoPrice {
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: #D10024;
+      letter-spacing: -0.01em;
+    }
+
+    .contentWrapper {
+      position: absolute;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      padding: 0 1.5rem;
+      text-align: center;
+    }
+
+    @media (max-width: 992px) {
+      .promoTitle {
+        font-size: 1.125rem;
+      }
+
+      .promoPrice {
+        font-size: 1rem;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .promoLabel {
+        font-size: 10px;
+        letter-spacing: 0.25em;
+      }
+
+      .promoTitle {
+        font-size: 1rem;
+        margin-bottom: 0.875rem;
+      }
+
+      .priceContainer {
+        margin-bottom: 1rem;
+      }
+
+      .contentWrapper {
+        bottom: 1.5rem;
+        padding: 0 1rem;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .cartBtn {
+        padding: 8px 20px;
+        font-size: 12px;
+      }
+
+      .saveBadge, .offerBadge {
+        font-size: 11px;
+        padding: 5px 10px;
+      }
+
+      .navBtnPromo {
+        width: 28px;
+        height: 28px;
+        font-size: 11px;
+      }
+    }
+    

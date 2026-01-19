@@ -1,0 +1,226 @@
+.slideImageWrapper {
+    width: 100%;
+    max-width: 450px;
+    height: 320px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-radius: 20px;
+    border: 2px solid rgba(209, 0, 36, 0.15);
+    overflow: hidden;
+    position: relative;
+    background: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.slideImageWrapper:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+/* Image */
+.slideImage,
+.slideImage img {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain !important;
+    object-position: center !important;
+    border-radius: inherit;
+    margin: 0;
+    padding: 15px;
+    display: block;
+}
+
+
+/* ========== CONTAINER ========== */
+.carouselContainer {
+    min-height: 380px;
+    background: #F8F8F8;
+    padding: 40px 20px !important;
+}
+  
+/* ========== TYPOGRAPHY ========== */
+.subtitle {
+    text-transform: uppercase;
+    color: #6c757d !important;
+    font-size: 11px;
+    letter-spacing: 2.5px;
+}
+  
+.title {
+    line-height: 1.3;
+    color: #2B2D42;
+    font-weight: 700;
+}
+
+@media (min-width: 768px) {
+  .title {
+    font-size: 2rem;
+  }
+}
+
+@media (min-width: 992px) {
+  .title {
+    font-size: 2.5rem;
+  }
+}
+  
+/* ========== BOUTONS ========== */
+.shopBtn {
+    background: linear-gradient(135deg, #D10024 0%, #E91E3F 100%);
+    color: white;
+    border: none;
+    padding: 12px 32px;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 3px 10px rgba(209, 0, 36, 0.25);
+    letter-spacing: 0.5px;
+}
+  
+.shopBtn:hover {
+    background: linear-gradient(135deg, #B8001F 0%, #D10024 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(209, 0, 36, 0.35);
+}
+  
+.shopBtn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(209, 0, 36, 0.25);
+}
+  
+.navBtn {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.7);
+    color: #2B2D42;
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+}
+  
+.navBtn:hover {
+    background: rgba(255, 255, 255, 1);
+    color: #2B2D42;
+    border-color: rgba(255, 255, 255, 1);
+    transform: scale(1.08);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.navBtn:active {
+    transform: scale(1.02);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.dotBtn {
+    width: 8px;
+    height: 8px;
+    border-radius: 4px;
+    border: none;
+    background-color: #dee2e6;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    padding: 0;
+}
+
+.dotBtn:hover {
+    background-color: rgba(209, 0, 36, 0.6);
+}
+  
+/* ========== RESPONSIVE ========== */
+@media (max-width: 1200px) {
+    .carouselContainer {
+      min-height: 360px;
+      padding: 35px 20px !important;
+    }
+
+    .slideImageWrapper {
+      max-width: 400px;
+      height: 280px;
+    }
+}
+  
+@media (max-width: 992px) {
+    .carouselContainer {
+      min-height: 340px;
+      padding: 30px 15px !important;
+    }
+
+    .slideImageWrapper {
+      max-width: 350px;
+      height: 260px;
+      margin: 0 auto;
+    }
+}
+  
+@media (max-width: 768px) {
+    .carouselContainer {
+      min-height: 320px;
+      padding: 25px 15px !important;
+    }
+
+    .slideImageWrapper {
+      max-width: 100%;
+      height: 240px;
+      margin-top: 0;
+    }
+
+    .title {
+      font-size: 1.75rem;
+    }
+  
+    .shopBtn {
+      padding: 10px 28px;
+      font-size: 13px;
+    }
+  
+    .navBtn {
+      width: 36px;
+      height: 36px;
+      font-size: 12px;
+    }
+}
+  
+@media (max-width: 576px) {
+    .carouselContainer {
+      min-height: 300px;
+      padding: 20px 10px !important;
+    }
+
+    .slideImageWrapper {
+      height: 200px;
+      border-radius: 15px;
+    }
+  
+    .title {
+      font-size: 1.5rem;
+    }
+
+    .subtitle {
+      font-size: 10px;
+      letter-spacing: 2px;
+    }
+  
+    .shopBtn {
+      padding: 10px 24px;
+      font-size: 12px;
+    }
+  
+    .navBtn {
+      width: 32px;
+      height: 32px;
+      font-size: 11px;
+    }
+}

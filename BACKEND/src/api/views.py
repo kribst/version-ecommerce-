@@ -3,10 +3,12 @@ from django.utils.timezone import now
 from rest_framework import viewsets, status, permissions, filters
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from .models import SiteSettings, ProductCarousel, ProductPromotion, Category
+from .models import SiteSettings, ProductCarousel, ProductPromotion, Category, Product, ParametrePage
 from .serializers import SiteSettingsSerializer, ProductCarouselSerializer, ProductPromotionSerializer, \
-    CategorySerializer
-
+    CategorySerializer, CategoryNewProductsSerializer, ParametrePageSerializer
+from .models import SiteSettings, ProductCarousel, ProductPromotion, Category, Product, ParametrePage, ProductFlash, FlashProductItem
+from .serializers import SiteSettingsSerializer, ProductCarouselSerializer, ProductPromotionSerializer, \
+    CategorySerializer, CategoryNewProductsSerializer, ParametrePageSerializer, MainFlashProductSerializer, SecondaryFlashProductSerializer
 
 # Create your views here.
 
@@ -142,3 +144,122 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = CategorySerializer
     permission_classes = [AllowAny]
     lookup_field = 'slug'
+
+
+
+# Nouveaux produits (catégories + produits récents)
+class NewProductsViewSet(viewsets.ViewSet):
+    permission_classes = [AllowAny]
+
+    def list(self, request):
+        parametres = ParametrePage.load()
+        category_limit = parametres.new_products_category_limit if parametres else 3
+        products_limit = parametres.new_products_per_category_limit if parametres else 12
+
+        # Filtrer uniquement les catégories qui ont au moins un produit actif
+        categories = (
+            Category.objects
+            .filter(products__is_active=True)
+            .distinct()
+            .order_by('name')
+        )[:category_limit]
+
+        serializer = CategoryNewProductsSerializer(
+            categories,
+            many=True,
+            context={'products_limit': products_limit}
+        )
+        
+        # Filtrer les résultats pour ne garder que les catégories avec des produits
+        filtered_results = [
+            category_data for category_data in serializer.data
+            if category_data.get('products') and len(category_data.get('products', [])) > 0
+        ]
+        
+        return Response({
+            "category_limit": category_limit,
+            "products_limit": products_limit,
+            "results": filtered_results
+        })
+
+
+# Paramètres de page
+class ParametrePageViewSet(viewsets.ViewSet):
+    permission_classes = [AllowAny]
+
+    def list(self, request):
+        parametres = ParametrePage.load()
+        if not parametres:
+            return Response(
+                {"detail": "Aucune configuration trouvée."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = ParametrePageSerializer(parametres)
+        return Response(serializer.data)
+
+
+
+
+
+# Flash promotion produit principal
+# Flash promotion produit principal
+
+from .models import ProductFlash, FlashProductItem
+from .serializers import MainFlashProductSerializer, SecondaryFlashProductSerializer
+
+class MainFlashProductViewSet(viewsets.ViewSet):
+    """
+    API endpoint pour le produit principal du flash promotion.
+    Retourne le produit principal du flash actif.
+    """
+    permission_classes = [AllowAny]
+
+    def list(self, request):
+        """
+        Retourne le produit principal du flash actif.
+        """
+        # Récupérer le flash actif
+        flash = ProductFlash.objects.filter(is_active=True).first()
+        
+        if not flash:
+            return Response(
+                {"detail": "Aucun flash promotion actif trouvé."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Récupérer le produit principal
+        main_item = flash.main_item
+        
+        if not main_item:
+            return Response(
+                {"detail": "Aucun produit principal défini pour ce flash."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        serializer = MainFlashProductSerializer(main_item)
+        return Response(serializer.data)
+
+
+# Flash promotion produits secondaires
+# Flash promotion produits secondaires
+
+class SecondaryFlashProductViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    API endpoint pour les produits secondaires du flash promotion.
+    Retourne tous les produits secondaires du flash actif.
+    """
+    serializer_class = SecondaryFlashProductSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        """
+        Retourne les produits secondaires du flash actif.
+        """
+        flash = ProductFlash.objects.filter(is_active=True).first()
+        
+        if not flash:
+            return Product.objects.none()
+        
+        # Retourner les produits secondaires du flash actif
+        return flash.secondary_products.filter(is_active=True)

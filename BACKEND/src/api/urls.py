@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import SiteSettingsViewSet, ProductCarouselViewSet, ProductPromotionViewSet, FeaturedPromotionViewSet, \
-    CategoryViewSet
+    CategoryViewSet, NewProductsViewSet, ParametrePageViewSet, MainFlashProductViewSet, SecondaryFlashProductViewSet
 
 router = DefaultRouter()
 router.register(r'site-settings', SiteSettingsViewSet, basename='site-settings')
@@ -9,6 +9,10 @@ router.register(r'product-carousel', ProductCarouselViewSet, basename='product-c
 router.register(r'promotions', ProductPromotionViewSet, basename='promotion')
 router.register(r'featured-promotions', FeaturedPromotionViewSet, basename='featured-promotion')
 router.register(r'categories', CategoryViewSet, basename='category')
+router.register(r'new-products', NewProductsViewSet, basename='new-products')
+router.register(r'parametre-page', ParametrePageViewSet, basename='parametre-page')
+router.register(r'flash-main-product', MainFlashProductViewSet, basename='flash-main-product')
+router.register(r'flash-secondary-products', SecondaryFlashProductViewSet, basename='flash-secondary-products')
 
 urlpatterns = [
     path('', include(router.urls)),

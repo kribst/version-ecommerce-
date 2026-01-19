@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.urls import path
 from django.http import HttpResponse, JsonResponse
 from decimal import InvalidOperation, Decimal
-from .models import SiteSettings, Category, Product, ProductImage, ProductCarousel, ProductPromotion
+from .models import SiteSettings, Category, Product, ProductImage, ProductCarousel, ProductPromotion, ParametrePage
 
 # Personnaliser le titre de l'administration avec le nom de l'entreprise
 try:
@@ -115,6 +115,50 @@ class SiteSettingsAdmin(admin.ModelAdmin):
 
 # FIN Informations générales sur l'entreprise
 # FIN Informations générales sur l'entreprise
+
+
+# Paramètres de page
+# Paramètres de page
+
+
+@admin.register(ParametrePage)
+class ParametrePageAdmin(admin.ModelAdmin):
+    # Affichage rapide dans la liste
+    list_display = ("new_products_category_limit", "new_products_per_category_limit", "updated_at")
+    list_display_links = ("new_products_category_limit",)
+
+    # Empêche l'ajout de plusieurs instances (singleton)
+    def has_add_permission(self, request):
+        return not ParametrePage.objects.exists()
+
+    # Empêche la suppression
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    # Organisation en sections
+    fieldsets = (
+        ("Section Nouveaux produits", {
+            "fields": ("new_products_category_limit", "new_products_per_category_limit"),
+            "description": "Contrôle du nombre de catégories et de produits affichés dans la section Nouveaux produits.",
+        }),
+        ("Horodatage", {
+            "fields": ("created_at", "updated_at"),
+            "classes": ("collapse",),
+        }),
+    )
+
+    # Champs en lecture seule
+    readonly_fields = ("created_at", "updated_at")
+
+    # Recherche simple
+    search_fields = ()
+
+    # Tri par défaut
+    ordering = ("-updated_at",)
+
+
+# FIN Paramètres de page
+# FIN Paramètres de page
 
 
 # Informations générales sur les produits
@@ -1375,3 +1419,300 @@ class ProductPromotionAdmin(admin.ModelAdmin):
             return JsonResponse({"price": float(product.price)})
         except Product.DoesNotExist:
             return JsonResponse({"price": None}, status=404)
+
+
+
+# produit flash
+# produit flash
+
+
+from django.contrib import admin
+from django import forms
+from django.core.exceptions import ValidationError
+from django.http import HttpResponseRedirect, HttpResponse
+from django.urls import reverse
+from django.contrib import messages
+from django.template.response import TemplateResponse
+from django.utils.html import format_html
+from .models import ProductFlash, FlashProductItem, Product
+
+class FlashProductItemInline(admin.StackedInline):
+    model = FlashProductItem
+    extra = 0  # Pas d'ajout supplémentaire par défaut
+    max_num = 1  # Maximum un seul produit principal
+    can_delete = True
+    autocomplete_fields = ['product']
+    fields = ('product', 'is_main', 'start_date', 'end_date', 'countdown_display')
+    readonly_fields = ('is_main', 'countdown_display')  # is_main en readonly puisqu'il n'y a qu'un seul produit principal
+    ordering = ('id',)
+    verbose_name = "Produit principal"
+    verbose_name_plural = "Produit principal"
+    
+    def get_formset(self, request, obj=None, **kwargs):
+        """Personnalise le formset pour forcer is_main=True"""
+        formset = super().get_formset(request, obj, **kwargs)
+        
+        # Sauvegarder la méthode save originale
+        original_save = formset.save
+        
+        def save_with_forced_main(self, commit=True):
+            """Force is_main=True lors de la sauvegarde"""
+            instances = original_save(self, commit=False)
+            for instance in instances:
+                instance.is_main = True
+            if commit:
+                self.save_m2m()
+                for instance in instances:
+                    instance.save()
+            return instances
+        
+        formset.save = save_with_forced_main
+        
+        # Forcer is_main=True dans les formulaires
+        original_init = formset.__init__
+        
+        def new_init(self, *args, **kwargs):
+            original_init(self, *args, **kwargs)
+            # Forcer is_main=True pour tous les formulaires
+            for form in self.forms:
+                if 'is_main' in form.fields:
+                    form.fields['is_main'].initial = True
+                    form.fields['is_main'].widget.attrs['readonly'] = True
+        
+        formset.__init__ = new_init
+        return formset
+
+    def clean(self):
+        super().clean()
+        main_product = None
+
+        for form in self.forms:
+            if not hasattr(form, "cleaned_data"):
+                continue
+            if form.cleaned_data.get("DELETE", False):
+                continue
+
+            product = form.cleaned_data.get("product")
+            # Forcer is_main=True puisqu'il n'y a qu'un seul produit principal
+            form.cleaned_data['is_main'] = True
+            
+            if product:
+                main_product = product
+
+        # Vérifier que le produit principal n'est pas dans les produits secondaires
+        if main_product:
+            # Utiliser parent_instance si disponible (pour les inlines)
+            parent = getattr(self, 'parent_instance', None) or getattr(self, 'instance', None)
+            if parent and parent.pk:
+                if main_product in parent.secondary_products.all():
+                    raise ValidationError(
+                        f"Le produit principal '{main_product.name}' ne peut pas être "
+                        "dans la liste des produits secondaires. Il sera automatiquement retiré."
+                    )
+
+    def countdown_display(self, obj):
+        start, end = obj.countdown
+        if start and end:
+            return f"{start} → {end}"
+        return "-"
+    countdown_display.short_description = "Compte à rebours"
+
+
+class ProductFlashAdminForm(forms.ModelForm):
+    """Formulaire personnalisé pour valider ProductFlash"""
+    
+    class Meta:
+        model = ProductFlash
+        fields = '__all__'
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        secondary_products = cleaned_data.get('secondary_products')
+        
+        # Vérifier si un produit principal existe
+        if self.instance and self.instance.pk:
+            main_item = self.instance.main_item
+            if main_item and main_item.product:
+                main_product = main_item.product
+                # Vérifier dans les données du formulaire
+                if secondary_products and main_product in secondary_products:
+                    raise ValidationError({
+                        'secondary_products': ValidationError(
+                            f"Le produit principal '{main_product.name}' ne peut pas être "
+                            "dans la liste des produits secondaires."
+                        )
+                    })
+        
+        return cleaned_data
+
+
+@admin.register(ProductFlash)
+class ProductFlashAdmin(admin.ModelAdmin):
+    form = ProductFlashAdminForm
+    list_display = ("title", "is_active", "created_at", "updated_at", "secondary_countdown")
+    list_filter = ("is_active", "created_at")
+    search_fields = ("title",)
+    ordering = ("-created_at",)
+    inlines = [FlashProductItemInline]
+    change_form_template = "admin/api/productflash/change_form.html"
+
+    # Multi-sélection pour les produits secondaires
+    filter_horizontal = ('secondary_products',)
+    
+    # Tous les champs sur une seule ligne
+    fields = (
+        'title',
+        'main_product_display',
+        'main_start_date_display',
+        'main_end_date_display',
+        'secondary_start_date',
+        'secondary_end_date',
+        'secondary_products',
+        'is_active'
+    )
+    
+    readonly_fields = (
+        'main_product_display', 
+        'main_start_date_display', 
+        'main_end_date_display'
+    )
+    
+    def main_product_display(self, obj):
+        """Affiche le nom du produit principal"""
+        if obj.pk:
+            main_item = obj.main_item
+            if main_item and main_item.product:
+                return main_item.product.name
+        return "Aucun produit principal défini"
+    main_product_display.short_description = "Produit principal"
+    
+    def main_start_date_display(self, obj):
+        """Affiche la date de début du produit principal"""
+        if obj.pk:
+            main_item = obj.main_item
+            if main_item and main_item.start_date:
+                return main_item.start_date.strftime("%d/%m/%Y %H:%M")
+        return "Non définie"
+    main_start_date_display.short_description = "Date de début (produit principal)"
+    
+    def main_end_date_display(self, obj):
+        """Affiche la date de fin du produit principal"""
+        if obj.pk:
+            main_item = obj.main_item
+            if main_item and main_item.end_date:
+                return main_item.end_date.strftime("%d/%m/%Y %H:%M")
+        return "Non définie"
+    main_end_date_display.short_description = "Date de fin (produit principal)"
+
+    def has_add_permission(self, request):
+        """Empêche l'ajout d'un nouvel enregistrement s'il en existe déjà un"""
+        # Vérifier s'il existe déjà un enregistrement
+        if ProductFlash.objects.exists():
+            return False
+        return super().has_add_permission(request)
+    
+    def changelist_view(self, request, extra_context=None):
+        """Redirige vers l'enregistrement unique s'il existe"""
+        # Si un seul enregistrement existe, rediriger vers sa page d'édition
+        count = ProductFlash.objects.count()
+        if count == 1:
+            obj = ProductFlash.objects.first()
+            return HttpResponseRedirect(
+                reverse('admin:api_productflash_change', args=[obj.pk])
+            )
+        elif count > 1:
+            # Si plusieurs enregistrements existent (ne devrait pas arriver), 
+            # on peut afficher un message ou rediriger vers le premier
+            messages.warning(
+                request,
+                "Plusieurs enregistrements existent. Seul le premier sera utilisé."
+            )
+            obj = ProductFlash.objects.first()
+            return HttpResponseRedirect(
+                reverse('admin:api_productflash_change', args=[obj.pk])
+            )
+        return super().changelist_view(request, extra_context)
+    
+    def add_view(self, request, form_url='', extra_context=None):
+        """Redirige vers l'enregistrement existant si on essaie d'en créer un nouveau"""
+        if ProductFlash.objects.exists():
+            obj = ProductFlash.objects.first()
+            messages.warning(
+                request,
+                "Un enregistrement existe déjà. Vous êtes redirigé vers celui-ci."
+            )
+            return HttpResponseRedirect(
+                reverse('admin:api_productflash_change', args=[obj.pk])
+            )
+        return super().add_view(request, form_url, extra_context)
+
+    def save_model(self, request, obj, form, change):
+        """Sauvegarde le modèle et retire automatiquement le produit principal des produits secondaires"""
+        # Sauvegarder d'abord pour avoir accès aux relations
+        super().save_model(request, obj, form, change)
+        
+        # Retirer automatiquement le produit principal des produits secondaires
+        main_item = obj.main_item
+        if main_item and main_item.product:
+            main_product = main_item.product
+            if main_product in obj.secondary_products.all():
+                obj.secondary_products.remove(main_product)
+                # Sauvegarder à nouveau pour persister le changement
+                super().save_model(request, obj, form, change)
+    
+    def save_related(self, request, form, formsets, change):
+        """Sauvegarde les relations et retire le produit principal des produits secondaires"""
+        super().save_related(request, form, formsets, change)
+        
+        # Après avoir sauvegardé les inlines, vérifier à nouveau
+        obj = form.instance
+        main_item = obj.main_item
+        if main_item and main_item.product:
+            main_product = main_item.product
+            if main_product in obj.secondary_products.all():
+                obj.secondary_products.remove(main_product)
+    
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        """Affiche les informations dans un tableau après l'enregistrement"""
+        extra_context = extra_context or {}
+        
+        # Récupérer l'objet
+        obj = self.get_object(request, object_id)
+        if obj:
+            # Préparer les données pour l'affichage en tableau
+            main_item = obj.main_item
+            main_product_name = "Aucun produit principal défini"
+            main_start_date = "Non définie"
+            main_end_date = "Non définie"
+            
+            if main_item and main_item.product:
+                main_product_name = main_item.product.name
+                if main_item.start_date:
+                    main_start_date = main_item.start_date.strftime("%d/%m/%Y %H:%M")
+                if main_item.end_date:
+                    main_end_date = main_item.end_date.strftime("%d/%m/%Y %H:%M")
+            
+            secondary_start_date = "Non définie"
+            secondary_end_date = "Non définie"
+            if obj.secondary_start_date:
+                secondary_start_date = obj.secondary_start_date.strftime("%d/%m/%Y %H:%M")
+            if obj.secondary_end_date:
+                secondary_end_date = obj.secondary_end_date.strftime("%d/%m/%Y %H:%M")
+            
+            secondary_products_list = list(obj.secondary_products.all())
+            secondary_products_names = ", ".join([p.name for p in secondary_products_list]) if secondary_products_list else "Aucun produit secondaire"
+            
+            # Toujours afficher le tableau
+            extra_context['show_table'] = True
+            extra_context['table_data'] = {
+                'title': obj.title or "Non défini",
+                'main_product': main_product_name,
+                'main_start_date': main_start_date,
+                'main_end_date': main_end_date,
+                'secondary_start_date': secondary_start_date,
+                'secondary_end_date': secondary_end_date,
+                'secondary_products': secondary_products_names,
+                'is_active': "✓ Actif" if obj.is_active else "✗ Inactif",
+            }
+        
+        return super().change_view(request, object_id, form_url, extra_context)

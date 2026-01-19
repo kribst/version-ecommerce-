@@ -100,6 +100,61 @@ class SiteSettings(models.Model):
 # Fin Informations générales sur l'entreprise
 
 
+# Paramètres de page
+# Paramètres de page
+
+
+class ParametrePage(models.Model):
+    """
+    Paramètres de configuration pour les pages du site (singleton).
+    """
+    # Configuration section Nouveaux produits
+    new_products_category_limit = models.PositiveIntegerField(
+        default=3,
+        help_text=_("Nombre de catégories à afficher dans la section Nouveaux produits")
+    )
+    new_products_per_category_limit = models.PositiveIntegerField(
+        default=12,
+        help_text=_("Nombre de produits récents à afficher par catégorie")
+    )
+
+    # Horodatage
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _("Paramètres de page")
+        verbose_name_plural = _("Paramètres de page")
+
+    def __str__(self):
+        return "Paramètres de page"
+
+    def clean(self):
+        """
+        Empêche la création d'une deuxième instance (singleton).
+        """
+        if not self.pk and ParametrePage.objects.exists():
+            raise ValidationError(
+                _("Il existe déjà une instance des paramètres de page. "
+                  "Modifiez l'instance existante au lieu d'en créer une nouvelle.")
+            )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()  # force la validation singleton
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        """
+        Retourne l'instance existante si elle existe.
+        """
+        return cls.objects.first()
+
+
+# Fin Paramètres de page
+# Fin Paramètres de page
+
+
 # Informations générales sur les produits
 # Informations générales sur les produits
 
@@ -282,3 +337,109 @@ class ProductPromotion(models.Model):
                 2
             )
         return 0
+
+
+
+
+# produit flash
+# produit flash
+
+from django.db import models
+
+class ProductFlash(models.Model):
+    title = models.CharField(max_length=200, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    # Dates communes pour les produits secondaires
+    secondary_start_date = models.DateTimeField(null=True, blank=True)
+    secondary_end_date = models.DateTimeField(null=True, blank=True)
+
+    # Produits secondaires sélectionnés en masse
+    secondary_products = models.ManyToManyField(
+        'Product',
+        blank=True,
+        related_name='flash_secondary',
+        help_text="Sélectionnez plusieurs produits secondaires pour ce flash"
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.title or f"Flash #{self.id}"
+
+    def clean(self):
+        """Valide que le produit principal n'est pas dans les produits secondaires"""
+        super().clean()
+        
+        # Vérifier seulement si l'instance existe déjà (a un ID)
+        if self.pk:
+            main_item = self.main_item
+            if main_item and main_item.product:
+                main_product = main_item.product
+                if main_product in self.secondary_products.all():
+                    raise ValidationError(
+                        f"Le produit principal '{main_product.name}' ne peut pas être "
+                        "dans la liste des produits secondaires."
+                    )
+
+    def save(self, *args, **kwargs):
+        """Sauvegarde le modèle et retire le produit principal des produits secondaires"""
+        # Sauvegarder d'abord pour avoir un ID si c'est une nouvelle instance
+        super().save(*args, **kwargs)
+        
+        # Retirer automatiquement le produit principal des produits secondaires
+        main_item = self.main_item
+        if main_item and main_item.product:
+            main_product = main_item.product
+            if main_product in self.secondary_products.all():
+                self.secondary_products.remove(main_product)
+
+    @property
+    def main_item(self):
+        """Retourne le produit principal du flash"""
+        return self.items.filter(is_main=True).first()
+
+    @property
+    def main_countdown(self):
+        main = self.main_item
+        if main:
+            return (main.start_date, main.end_date)
+        return (None, None)
+
+    @property
+    def secondary_countdown(self):
+        return (self.secondary_start_date, self.secondary_end_date)
+
+
+class FlashProductItem(models.Model):
+    flash = models.ForeignKey(ProductFlash, related_name='items', on_delete=models.CASCADE)
+    product = models.ForeignKey('Product', on_delete=models.CASCADE)
+    is_main = models.BooleanField(default=False)
+    # start/end pour le principal uniquement
+    start_date = models.DateTimeField(null=True, blank=True)
+    end_date = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['id']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['flash'],
+                condition=models.Q(is_main=True),
+                name='unique_main_product_per_flash'
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.product.name} (Flash Item)"
+
+    @property
+    def countdown(self):
+        """Retourne le compte à rebours de ce produit"""
+        if self.is_main:
+            return (self.start_date, self.end_date)
+        # autres produits : compte à rebours commun du flash
+        return self.flash.secondary_countdown

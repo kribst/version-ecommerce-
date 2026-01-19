@@ -1,0 +1,255 @@
+/* ================================
+   Category Shop – PRO Electro Style
+================================ */
+
+/* --------- Variables --------- */
+:root {
+    --radius: 7px;
+    --bg-section: #f2f3f5;
+    --red-electro: #D10024;
+    --title-color: #f9fafb;
+    --cta-color: #ffb74d;
+    --cta-hover: #ffc978;
+  }
+  
+  /* --------- Section --------- */
+  .section {
+    padding-top: 18px;
+    padding-bottom: 30px;
+    background-color: var(--bg-section);
+  }
+  
+  /* --------- Container --------- */
+  .container {
+    position: relative;
+    width: 100%;
+    padding-left: 15px;
+    padding-right: 15px;
+  }
+  
+  /* --------- Swiper --------- */
+  .swiper {
+    width: 100%;
+  }
+  
+  /* --------- Shop Card --------- */
+  .shop {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius);
+    min-width: 0;
+    flex-shrink: 0;
+    box-shadow: 0 6px 18px rgba(43, 45, 66, 0.10);
+    transition: box-shadow 0.25s ease, transform 0.25s ease;
+  }
+  
+  .shop:hover {
+    box-shadow: 0 10px 26px rgba(43, 45, 66, 0.14);
+    transform: translateY(-1px);
+  }
+  
+  /* --------- Skew background --------- */
+  .shop::before,
+  .shop::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    background: var(--red-electro);
+    opacity: 0.9;
+    transform: skewX(-45deg);
+    border-radius: var(--radius);
+  }
+  
+  .shop::before {
+    left: 0;
+    width: 60%;
+    z-index: 1;
+  }
+  
+  .shop::after {
+    left: 1px;
+    width: 100%;
+    transform: skewX(-45deg) translateX(-100%);
+    transition: transform 0.35s ease;
+    z-index: 2;
+  }
+  
+  .shop:hover::after {
+    transform: skewX(-45deg) translateX(0%);
+  }
+  
+  /* --------- Image --------- */
+  .shopImg {
+    position: relative;
+  height: 80px;
+    background-color: #e4e7ed;
+    overflow: hidden;
+  z-index: 0;
+    border-radius: var(--radius);
+  }
+  
+  .shopImg img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: var(--radius);
+  border: 1px solid #b8001f; /* couleur RedBar */
+  box-shadow: 0 0 0 1px #b8001f inset;
+  transition: transform 0.3s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  }
+  
+  .shop:hover .shopImg img {
+  transform: scale(1.05);
+  border-color: transparent;
+  box-shadow: none;
+  }
+  
+  /* --------- Text content --------- */
+  .shopBody {
+    position: absolute;
+    top: 0;
+    width: 75%;
+    padding: 10px 18px;
+    z-index: 10;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+    font-family: inherit;
+  }
+  
+  /* --------- Category title --------- */
+  .shopBody h4 {
+    color: var(--title-color);
+    font-size: clamp(13px, 0.85vw, 15px);
+    font-weight: 700;
+    margin: 4px 0 6px;
+    line-height: 1.2;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+  }
+
+  .catTitle {
+    display: block;
+  }
+
+  /* line 1: category name (ellipsis) */
+  .catName {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* line 2: constant label */
+  .catCollection {
+    display: block;
+    margin-top: 2px;
+    font-size: inherit;
+    font-weight: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    opacity: 1;
+  }
+  
+  /* --------- CTA --------- */
+  .ctaBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  
+    color: var(--cta-color);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    text-decoration: none;
+  
+    transition: all 0.25s ease;
+    white-space: nowrap; 
+  }
+  
+  .shop:hover .ctaBtn {
+    color: var(--cta-hover);
+    transform: translateX(4px);
+  }
+  
+  /* CTA underline effect */
+  .ctaBtn::after {
+    content: "";
+    width: 0;
+    height: 2px;
+    background: currentColor;
+
+    transition: width 0.25s ease;
+  }
+  
+  .shop:hover .ctaBtn::after {
+    width: 100%;
+  }
+  
+  /* --------- Navigation buttons --------- */
+  .navButton {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid #e4e7ed;
+    background-color: #fff;
+    color: #2b2d42;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .navButton:hover {
+    background-color: var(--red-electro);
+    border-color: var(--red-electro);
+    color: #fff;
+  }
+  
+  /* --------- Responsive --------- */
+  @media (max-width: 991px) {
+    .shopBody {
+      width: 70%;
+      padding: 12px 14px;
+    }
+  
+    .shopBody h4 {
+      font-size: 14px;
+    }
+  }
+  
+
+
+
+
+  @media (max-width: 767px) {
+    .shopImg {
+    height: 70px;
+    }
+  
+    .shopBody {
+      width: 65%;
+      padding: 10px 12px;
+    }
+  
+    .shopBody h4 {
+      font-size: 14px;
+    }
+  
+    .ctaBtn {
+      font-size: 11px;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .shopImg {
+    height: 65px;
+    }
+  }
+  
+
+  
