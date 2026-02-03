@@ -70,6 +70,14 @@ export const CartProvider = ({ children }) => {
     );
   };
 
+  const updateCartItem = (productId, updates) => {
+    setCart((prev) =>
+      prev.map((item) =>
+        item.id === productId ? { ...item, ...updates } : item
+      )
+    );
+  };
+
   const clearCart = () => {
     setCart([]);
   };
@@ -93,6 +101,7 @@ export const CartProvider = ({ children }) => {
         addToCart,
         removeFromCart,
         updateQuantity,
+        updateCartItem,
         clearCart,
         isInCart,
         cartCount,

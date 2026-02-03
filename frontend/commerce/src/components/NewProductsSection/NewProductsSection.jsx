@@ -4,9 +4,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Link from 'next/link';
-import { FaHeart } from 'react-icons/fa';
 import { useWishlist } from '../../context/WishlistContext';
 import { useCart } from '../../context/CartContext';
+import ProductCard from '../ProductCard';
 import styles from './NewProductsSection.module.css';
 
 const NewProductsSection = () => {
@@ -81,7 +81,7 @@ const NewProductsSection = () => {
               oldPrice: product.compare_at_price ? parseFloat(product.compare_at_price) : null,
               image: imageUrl,
               sale: salePercent,
-              new: isNew,
+              isNew: isNew,
               category: product.category || category.name,
             };
           });
@@ -121,21 +121,6 @@ const NewProductsSection = () => {
       addToCart(product, 1);
       console.log('Produit ajouté au panier:', product);
     }
-  };
-
-  // Construire l'URL complète de l'image
-  const getImageUrl = (imagePath) => {
-    if (!imagePath) return "/img/shop01.png";
-    if (imagePath.startsWith("http")) return imagePath;
-    return `${process.env.NEXT_PUBLIC_API_URL}${imagePath}`;
-  };
-
-  // Construire le lien vers le produit
-  const getProductLink = (product) => {
-    if (product.slug) {
-      return `/product/${product.slug}`;
-    }
-    return `/product/${product.id}`;
   };
 
   if (loading) {
@@ -213,60 +198,14 @@ const NewProductsSection = () => {
                     <div className={styles.productsGrid}>
                       {currentProducts.length > 0 ? (
                         currentProducts.map((product) => (
-                          <div key={product.id} className={`${styles.product} group`}>
-                            <div className={styles.productImg}>
-                              <img 
-                                src={getImageUrl(product.image)} 
-                                alt={product.name}
-                                onError={(e) => {
-                                  e.target.src = "/img/shop01.png";
-                                }}
-                              />
-                              <button
-                                className={`${styles.wishlistBtn} ${isInWishlist(product.id) ? styles.wishlistActive : ''}`}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  toggleWishlist(product);
-                                }}
-                                aria-label={isInWishlist(product.id) ? 'Retirer de la wishlist' : 'Ajouter à la wishlist'}
-                                title={isInWishlist(product.id) ? 'Retirer de la wishlist' : 'Ajouter à la wishlist'}
-                              >
-                                <FaHeart className={styles.wishlistIcon} />
-                              </button>
-                              <div className={styles.productLabel}>
-                                {product.sale && (
-                                  <span className={styles.sale}>{product.sale}</span>
-                                )}
-                                {product.new && (
-                                  <span className={styles.new}>NEW</span>
-                                )}
-                              </div>
-                            </div>
-                            <div className={styles.productBody}>
-                              <p className={styles.productCategory}>{product.category || category.name}</p>
-                              <h3 className={styles.productName}>
-                                <Link href={getProductLink(product)}>{product.name}</Link>
-                              </h3>
-                              <h4 className={styles.productPrice}>
-                                {product.price.toFixed(2)}{' '} CFA
-                                {product.oldPrice && (
-                                  <del className={styles.productOldPrice}>
-                                    {product.oldPrice.toFixed(2)} CFA
-                                  </del>
-                                )}
-                              </h4>
-                            </div>
-                            <div className={styles.addToCart}>
-                              <button
-                                className={`${styles.addToCartBtn} ${isInCart(product.id) ? styles.removeFromCartBtn : ''}`}
-                                onClick={() => handleToggleCart(product)}
-                              >
-                                <i className={`fa ${isInCart(product.id) ? 'fa-times' : 'fa-shopping-cart'}`}></i>{' '}
-                                {isInCart(product.id) ? 'remove from cart' : 'add to cart'}
-                              </button>
-                            </div>
-                          </div>
+                          <ProductCard
+                            key={product.id}
+                            product={product}
+                            isInWishlist={isInWishlist(product.id)}
+                            onToggleWishlist={() => toggleWishlist(product)}
+                            isInCart={isInCart(product.id)}
+                            onToggleCart={() => handleToggleCart(product)}
+                          />
                         ))
                       ) : (
                         <div className="text-center py-12" style={{ gridColumn: '1 / -1' }}>

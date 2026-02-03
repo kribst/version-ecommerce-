@@ -1,0 +1,45 @@
+.inputSelect {
+  height: 40px;
+  padding: 0 20px;
+  border: none;
+  color: #333;
+  background: #f8f8f8;
+  border-radius: 8px 0 0 1px;
+  margin-right: -2px;
+  font-size: 14px;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%232B2D42' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 15px center;
+  padding-right: 30px;
+  min-width: 180px;
+  max-width: 220px;
+}
+
+
+.inputSelect:focus,
+.inputSelect:active,
+.inputSelect:hover {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  background-color: #f0f0f0;
+}
+
+/* Style des options du dropdown */
+.inputSelect option {
+  background: #fff;
+  color: #333;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 400;
+  border: none;
+}
+
+.inputSelect option:hover,
+.inputSelect option:checked {
+  background: #007bff;
+  color: #fff;
+}

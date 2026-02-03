@@ -85,6 +85,15 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticatedOrReadOnly",
     ],
+    # Rate limiting pour protéger contre le scraping
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "100/hour",  # 100 requêtes par heure pour les utilisateurs anonymes
+        "user": "1000/hour",  # 1000 requêtes par heure pour les utilisateurs authentifiés
+    },
 }
 # ...existing code...
 

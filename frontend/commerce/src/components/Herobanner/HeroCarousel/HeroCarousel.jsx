@@ -191,7 +191,7 @@ export default function HeroCarousel() {
 
           {slide.price && (
             <p className="h5 fw-bold text-danger mb-3 mb-md-4">
-              {parseFloat(slide.price).toFixed(2)} FCFA
+              {slide.price.toLocaleString('fr-FR')} FCFA
             </p>
           )}
 

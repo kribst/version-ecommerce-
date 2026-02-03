@@ -1,0 +1,195 @@
+.fixedHeader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1000;
+}
+
+
+
+/* =======================
+   SECTION GLOBALE
+======================= */
+.cartSection {
+  padding: 60px;
+  background-color: #f5f7fb;
+}
+
+/* =======================
+   TABLE WRAPPER
+======================= */
+.tableWrapper {
+  overflow-x: auto;
+  background: #ffffff;
+  border: 1px solid #e4e7ed;
+  border-radius: 12px;
+}
+
+/* =======================
+   TABLE
+======================= */
+.cartTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  table-layout: fixed;
+}
+
+/* =======================
+   HEADER
+======================= */
+.cartTable thead {
+  background-color: #f9fafb;
+}
+
+.cartTable th {
+  padding: 10px 8px;
+  text-align: center;
+  font-weight: 600;
+  border-bottom: 1px solid #e4e7ed;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* =======================
+   BODY
+======================= */
+.cartTable td {
+  padding: 8px;
+  text-align: center;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: middle;
+  overflow: hidden;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+/* =======================
+   COLONNES (BLOQUÉES)
+======================= */
+.productCell { width: 200px; text-align: left; }
+.imageCell { width: 80px; }
+.colorCell { width: 140px; }
+.priceCell { width: 100px; }
+.quantityCell { width: 120px; }
+.totalCell { width: 120px; }
+.actionCell { width: 60px; }
+
+/* =======================
+   PRODUIT
+======================= */
+.productNameLink {
+  display: block;
+  max-width: 100%;
+  color: #2b2d42;
+  font-weight: 500;
+  font-size: 14px;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.3s ease, transform 0.3s ease;
+}
+
+.productNameLink:hover { color: #d10024; transform: scale(1.02); }
+
+/* =======================
+   IMAGE
+======================= */
+.imageWrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.productImage { width: 60px; height: 60px; object-fit: contain; transition: transform 0.3s ease; }
+
+/* =======================
+   COULEURS
+======================= */
+.colorSelector { display: flex; align-items: center; gap: 6px; }
+.colorOptions { display: flex; gap: 4px; }
+.colorOption {
+  width: 14px; height: 14px; border-radius: 50%; border: 1px solid #ccc;
+  cursor: pointer; transition: transform 0.3s ease, border-color 0.3s ease;
+}
+.colorSelected { border: 2px solid #000; }
+.selectedColorDisplay {
+  width: 16px; height: 16px; border-radius: 50%; border: 1px solid #ccc;
+  transition: transform 0.3s ease, border-color 0.3s ease;
+}
+
+/* =======================
+   PRIX
+======================= */
+.priceValue,
+.totalValue { font-weight: 500; font-size: 14px; transition: color 0.3s ease, transform 0.3s ease; }
+
+/* =======================
+   QUANTITÉ
+======================= */
+.qtyBox { display: flex; align-items: center; justify-content: center; transition: transform 0.3s ease; }
+.qtyBtn {
+  background: #f5f5f5; border: 1px solid #ddd; width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  transition: background 0.3s ease, transform 0.3s ease;
+}
+.qtyBtn:hover { background: #e4e7ed; transform: scale(1.1); }
+.qtyInput {
+  width: 36px; height: 26px; border: 1px solid #ddd; text-align: center; font-size: 13px;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+.qtyInput:focus {
+  border-color: #d10024;
+  box-shadow: 0 0 0 2px rgba(209,0,36,0.15);
+}
+
+/* =======================
+   ACTION
+======================= */
+.removeBtn {
+  background: none; border: none; color: #d10024; cursor: pointer; font-size: 14px;
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+.removeBtn:hover { transform: scale(1.3) rotate(5deg); color: #d10024; }
+
+/* =======================
+   PANIER VIDE
+======================= */
+.emptyCart { text-align: center; padding: 40px 0; }
+.continueShoppingBtn {
+  margin-top: 12px; display: inline-block; background: #d10024; color: #fff;
+  padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 14px;
+}
+
+/* =======================
+   COUPON
+======================= */
+.couponBox { margin-top: 16px; display: flex; gap: 8px; }
+.couponInput {
+  flex: 1; padding: 8px 10px; border: 1px solid #e4e7ed; font-size: 14px;
+}
+.couponBtn {
+  padding: 8px 16px; background: #2b2d42; color: #fff; border: none;
+  font-size: 14px; cursor: pointer; transition: background 0.3s ease, transform 0.3s ease;
+}
+.couponBtn:hover { background: #1a1b2e; transform: scale(1.05); }
+
+/* =======================
+   ANIMATION SUR LA LIGNE
+======================= */
+.cartTable tbody tr {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.cartTable tbody tr:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+.cartTable tbody tr:hover td {
+  transform: translateY(-2px);
+  opacity: 0.95;
+}
+.cartTable tbody tr:hover .priceValue,
+.cartTable tbody tr:hover .totalValue { color: #d10024; transform: scale(1.05); }
+.cartTable tbody tr:hover .qtyBox { transform: scale(1.02); }
+.cartTable tbody tr:hover .colorOption { transform: scale(1.1); border-color: #d10024; }
+.cartTable tbody tr:hover .selectedColorDisplay { transform: scale(1.1); border-color: #d10024; }

@@ -1,0 +1,49 @@
+/* ===============================
+   Navigation.module.css
+================================ */
+
+/* Navigation */
+.navigation {
+    background-color: #ffffff;
+    border-bottom: 1px solid #e4e7ed;
+  }
+  
+  /* Container */
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+  
+  /* Menu */
+  .mainNav {
+    display: flex;
+    justify-content: center; /* 🎯 centrage horizontal */
+    align-items: center;
+    list-style: none;
+    margin: 0;
+    padding: 1rem 0;
+    gap: 2rem; /* espace entre les liens */
+  }
+  
+  /* Liens */
+  .mainNav li a {
+    font-size: 14px;
+    font-weight: 500;
+    color: #2b2d42;
+    text-decoration: none;
+    padding-bottom: 4px;
+    transition: color 0.2s ease;
+  }
+  
+  /* Hover */
+  .mainNav li a:hover {
+    color: #d10024;
+  }
+  
+  /* Lien actif */
+  .active a {
+    color: #d10024;
+    border-bottom: 2px solid #d10024;
+  }
+  

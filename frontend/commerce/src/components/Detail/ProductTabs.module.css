@@ -1,0 +1,307 @@
+.stars {
+  margin-left: 0.25rem; /* petit espace entre le nombre et les étoiles */
+}
+
+
+
+/* ================= CONTAINER ================= */
+.product-tab-container {
+  margin-top: 0px;
+  padding: 0 px; /* espace global */
+}
+
+/* wrapper central */
+#product-tab {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* ================= TAB NAV ================= */
+.tab-nav {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  list-style: none;
+  padding: 0;
+  margin: 0 auto 8px;
+  position: relative;
+}
+
+/* ligne grise continue */
+.tab-nav::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background: #e5e5e5;
+}
+
+/* items */
+.tab-nav li {
+  font-weight: 600;
+  font-size: 15px;
+  color: #888;
+  cursor: pointer;
+  padding-bottom: 14px;
+  position: relative;
+  transition: color 0.3s ease;
+}
+
+.tab-nav li:hover {
+  color: #d10024;
+}
+
+.tab-nav li.active {
+  color: #d10024;
+}
+
+/* soulignement rouge */
+.tab-nav li.active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  width: 100%;
+  height: 2px;
+  background: #d10024;
+}
+
+/* ================= TAB CONTENT ================= */
+.tab-content {
+  padding: 10px 0 50px;
+}
+
+
+/* Onglet actif */
+.tab-pane {
+  width: 100%;
+}
+
+/* Texte de description */
+.tab-pane p {
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0 40px;        /* air sur les côtés */
+  line-height: 1.8;
+  font-size: 15px;
+  color: #333;
+}
+
+
+
+
+/* animation */
+@keyframes fade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ================= REVIEWS GRID ================= */
+.reviews-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  gap: 0px;
+  padding-top: 20px;
+  padding-bottom: 40px;
+  padding-left: 40px;
+  padding-right: 40px;
+  align-items: start;
+  border-left: 1px solid #eee;
+  border-right: 1px solid #eee;
+}
+
+/* ================= RATING SUMMARY ================= */
+.rating-box {
+  background: #fafafa;
+  padding: 30px;
+  border-radius: 14px;
+  border: 1px solid #eee;
+}
+
+.rating-avg {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 38px;
+  font-weight: 700;
+}
+
+.rating-avg .stars {
+  color: #d10024;
+  font-size: 22px;
+}
+
+.rating-list {
+  margin-top: 25px;
+  padding: 0;
+  list-style: none;
+}
+
+.rating-line {
+  display: grid;
+  grid-template-columns: 90px 1fr 30px;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.rating-line .stars {
+  color: #d10024;
+}
+
+/* ================= PROGRESS BAR ================= */
+.progress {
+  background: #eaeaea;
+  height: 8px;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.progress div {
+  height: 100%;
+  background: linear-gradient(90deg, #d10024, #ff4a4a);
+}
+
+/* ================= REVIEWS ================= */
+.reviews-box {
+  padding: 30px;
+}
+
+.reviews {
+  padding: 0;
+  list-style: none;
+}
+
+.reviews li {
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 14px;
+  padding: 20px 22px;
+  margin-bottom: 20px;
+}
+
+.review-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  gap: 10px;
+}
+
+.review-heading h5 {
+  font-size: 15px;
+  margin: 0;
+  font-weight: 600;
+}
+
+.review-heading span {
+  font-size: 12px;
+  color: #999;
+}
+
+.review-heading .stars {
+  color: #d10024;
+}
+
+/* ================= PAGINATION ================= */
+.pagination {
+  display: flex;
+  gap: 10px;
+  margin-top: 30px;
+  list-style: none;
+  padding: 0;
+}
+
+.pagination li {
+  min-width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.pagination li.active {
+  background: #d10024;
+  color: #fff;
+  border-color: #d10024;
+}
+
+/* ================= REVIEW FORM ================= */
+.review-form-box {
+  background: #fafafa;
+  padding: 30px;
+  border-radius: 14px;
+  border: 1px solid #eee;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.review-form-box input,
+.review-form-box textarea {
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  font-size: 14px;
+}
+
+.review-form-box textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.rating-input {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+}
+
+.stars-input {
+  color: #d10024;
+  font-size: 22px;
+}
+
+/* ================= BUTTON ================= */
+.review-form-box button {
+  margin-top: 12px;
+  background: linear-gradient(90deg, #d10024, #ff4a4a);
+  color: white;
+  border: none;
+  padding: 13px;
+  border-radius: 30px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.review-form-box button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(209, 0, 36, 0.25);
+}
+
+/* ================= RESPONSIVE ================= */
+@media (max-width: 992px) {
+  .reviews-row {
+    grid-template-columns: 1fr;
+  }
+
+  .tab-pane p {
+    max-width: 100%;
+    padding: 0 10px;
+  }
+}

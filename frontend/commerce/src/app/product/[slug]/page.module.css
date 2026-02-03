@@ -1,0 +1,10 @@
+/* Styles spécifiques à la page de détail si nécessaire */
+/* Les styles principaux sont dans Detail.module.css */
+.fixedHeader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+  }
+  

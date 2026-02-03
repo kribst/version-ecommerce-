@@ -1,0 +1,30 @@
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0px 14px 0px 0px;
+    background-color: #eeeeee;
+    color: #7a7a7a;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 20px;
+    text-decoration: none;
+    transition: background-color 0.2s ease;
+  }
+  
+  .btn:hover {
+    background-color: #e0e0e0;
+  }
+
+  
+  .icon {
+    font-size: 32px;
+    color: #25d366;
+    
+  }
+  
+  .text {
+    font-size: 13px;
+    color: #7a7a7a;
+  }

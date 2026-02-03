@@ -9,8 +9,13 @@ const HeaderWishlist = () => {
   const [open, setOpen] = useState(false);
   const { wishlist, wishlistCount, removeFromWishlist } = useWishlist();
 
-  const formatPrice = (num) =>
-    typeof num === "number" ? num.toFixed(2) : Number(num || 0).toFixed(2);
+  const formatCFA = (value) => {
+    const n = Number(value ?? 0);
+    return new Intl.NumberFormat("fr-FR", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(Number.isFinite(n) ? n : 0);
+  };
 
   return (
     <div
@@ -40,7 +45,7 @@ const HeaderWishlist = () => {
                     <a href={`/product/${item.slug || item.id}`}>{item.name}</a>
                   </h3>
                   <h4 className={styles.productPrice}>
-                    {formatPrice(item.price)} CFA
+                    {formatCFA(item.price)} CFA
                   </h4>
                 </div>
 

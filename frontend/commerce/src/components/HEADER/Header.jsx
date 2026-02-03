@@ -3,6 +3,7 @@ import styles from "./Header.module.css";
 import TopHeader from "./Topheader/TopHeader";
 import MainHeader from "./MainHeader/MainHeader";
 import RedBar from "../RedBar/RedBar";
+import Navigation from "./Navigation";
 
 const Header = () => {
   return (
@@ -10,6 +11,7 @@ const Header = () => {
       <TopHeader />
       <MainHeader />
       <RedBar />
+      <Navigation />
     </header>
   );
 };

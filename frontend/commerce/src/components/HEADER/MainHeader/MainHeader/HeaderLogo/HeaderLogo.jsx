@@ -3,6 +3,7 @@
 import React from "react";
 import styles from "./HeaderLogo.module.css";
 import { useSiteSettings } from "../../../../../context/SiteSettingsContext";
+import Link from "next/link";
 
 const HeaderLogo = () => {
   const settings = useSiteSettings();
@@ -18,9 +19,9 @@ const HeaderLogo = () => {
 
   return (
     <div className={styles.headerLogo}>
-      <a href="#" className={styles.logo}>
+      <Link href="/" className={styles.logo}>
         <img src={logoUrl} alt="Logo" className={styles.logoImage} />
-      </a>
+      </Link>
     </div>
   );
 };

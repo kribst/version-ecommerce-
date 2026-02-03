@@ -1,0 +1,46 @@
+.pageHeader {
+    width: 100%;
+    height: 230px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 140px;
+  
+    /* Image en arrière-plan */
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  
+    /* IMPORTANT : l’image scrolle avec la page */
+    background-attachment: scroll;
+  
+    position: relative;
+  }
+  
+  /* Overlay sombre pour la lisibilité */
+  .pageHeader::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+  }
+  
+  .title {
+    position: relative;
+    color: #fff;
+    font-size: 3rem;
+    font-weight: 600;
+    text-align: center;
+  }
+  
+  /* Responsive */
+  @media (max-width: 768px) {
+    .pageHeader {
+      height: 200px;
+    }
+  
+    .title {
+      font-size: 2rem;
+    }
+  }
+  

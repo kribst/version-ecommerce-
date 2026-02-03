@@ -1,0 +1,103 @@
+.section {
+    padding: 40px 0;
+    background: #fff;
+  }
+  
+  .container {
+    max-width: 1200px;
+    margin: auto;
+  }
+  
+  .row {
+    display: flex;
+    gap: 30px;
+  }
+  
+  .col7 {
+    flex: 7;
+  }
+  
+  .col5 {
+    flex: 5;
+    border: 1px solid #eee;
+    padding: 25px;
+  }
+  
+  .title {
+    font-size: 20px;
+    margin-bottom: 20px;
+  }
+  
+  .titleCenter {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  
+  .billingDetails {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .input {
+    padding: 12px;
+    border: 1px solid #ddd;
+    width: 100%;
+  }
+  
+  .checkbox {
+    display: flex;
+    gap: 10px;
+    font-size: 14px;
+  }
+  
+  .orderBox {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
+  }
+  
+  .orderRow {
+    display: flex;
+    justify-content: space-between;
+  }
+  
+  .total {
+    color: red;
+    font-size: 20px;
+  }
+  
+  .payment {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  
+  .btn {
+    width: 100%;
+    padding: 14px;
+    background: crimson;
+    color: #fff;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  
+  .btn:hover {
+    opacity: 0.9;
+  }
+  
+  .totalBlock {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .totalWords {
+    font-size: 0.9rem;
+    color: #555;
+    font-style: italic;
+  }
+  

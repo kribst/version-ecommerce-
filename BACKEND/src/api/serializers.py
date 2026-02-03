@@ -8,6 +8,7 @@ from .models import (
     ParametrePage,
     ProductFlash,
     FlashProductItem,
+    Commentaire,
 )
 
 
@@ -87,7 +88,7 @@ class SiteSettingsSerializer(serializers.ModelSerializer):
 class ProductCarouselSerializer(serializers.ModelSerializer):
     # On expose des champs additionnels qui viennent du produit
     product_name = serializers.CharField(source='product.name', read_only=True)
-    product_price = serializers.DecimalField(source='product.price', max_digits=10, decimal_places=2, read_only=True)
+    product_price = serializers.IntegerField(source='product.price', read_only=True)
     product_image = serializers.SerializerMethodField()
 
     class Meta:
@@ -123,15 +124,19 @@ class ProductCarouselSerializer(serializers.ModelSerializer):
 # Produit promotionnel
 # Produit promotionnel
 
-
 class ProductPromotionSerializer(serializers.ModelSerializer):
     # Infos produit
     product_name = serializers.CharField(source='product.name', read_only=True)
     product_slug = serializers.CharField(source='product.slug', read_only=True)
-    original_price = serializers.DecimalField(
+
+    # Prix d'origine en entier
+    original_price = serializers.IntegerField(
         source='product.price',
-        max_digits=10,
-        decimal_places=2,
+        read_only=True
+    )
+
+    # Prix promo en entier
+    promo_price = serializers.IntegerField(
         read_only=True
     )
 
@@ -169,7 +174,6 @@ class ProductPromotionSerializer(serializers.ModelSerializer):
         # Utilise image_display_url qui gère image ET image_url
         return obj.product.image_display_url
 
-
 # Produit categorie
 # Produit categorie
 
@@ -190,6 +194,7 @@ class ParametrePageSerializer(serializers.ModelSerializer):
             'id',
             'new_products_category_limit',
             'new_products_per_category_limit',
+            'commentaires_per_page',
             'created_at',
             'updated_at',
         ]
@@ -254,10 +259,15 @@ from django.utils import timezone
 from .models import FlashProductItem
 from datetime import timedelta
 
-
 class MainFlashProductSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source="product.name", read_only=True)
-    product_price = serializers.DecimalField(source="product.price", max_digits=10, decimal_places=2, read_only=True)
+
+    # Prix en entier
+    product_price = serializers.IntegerField(source="product.price", read_only=True)
+    
+    # Prix de comparaison depuis FlashProductItem (priorité) ou depuis le produit
+    compare_at_price = serializers.SerializerMethodField()
+    
     product_image = serializers.SerializerMethodField()
 
     start_date = serializers.DateTimeField(read_only=True)
@@ -270,11 +280,21 @@ class MainFlashProductSerializer(serializers.ModelSerializer):
         fields = [
             "product_name",
             "product_price",
+            "compare_at_price",
             "product_image",
             "start_date",
             "end_date",
             "remaining_time",
         ]
+
+    def get_compare_at_price(self, obj):
+        """
+        Retourne le prix de comparaison depuis FlashProductItem,
+        sinon depuis le produit associé
+        """
+        if obj.compare_at_price:
+            return obj.compare_at_price
+        return obj.product.compare_at_price if obj.product.compare_at_price else None
 
     def get_product_image(self, obj):
         return obj.product.image_display_url
@@ -306,7 +326,10 @@ class MainFlashProductSerializer(serializers.ModelSerializer):
 
 class SecondaryFlashProductSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source="name", read_only=True)
-    product_price = serializers.DecimalField(source="price", max_digits=10, decimal_places=2, read_only=True)
+
+    # Prix en entier
+    product_price = serializers.IntegerField(source="price", read_only=True)
+
     product_image = serializers.SerializerMethodField()
     start_date = serializers.SerializerMethodField()
     end_date = serializers.SerializerMethodField()
@@ -357,3 +380,185 @@ class SecondaryFlashProductSerializer(serializers.ModelSerializer):
         minutes, seconds = divmod(remainder, 60)
 
         return f"{days:02d}-{hours:02d}-{minutes:02d}-{seconds:02d}"
+
+
+# Recherche de produits
+# Recherche de produits
+
+class ProductSearchSerializer(serializers.ModelSerializer):
+    """
+    Serializer pour les résultats de recherche de produits.
+    """
+    image = serializers.SerializerMethodField()
+    category = serializers.SerializerMethodField()
+    category_slug = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = [
+            'id',
+            'name',
+            'slug',
+            'price',
+            'compare_at_price',
+            'image',
+            'image_url',
+            'category',
+            'category_slug',
+            'description',
+            'shot_description',
+        ]
+
+    def get_image(self, obj):
+        return obj.image_display_url
+
+    def get_category(self, obj):
+        return obj.category.name if obj.category else None
+
+    def get_category_slug(self, obj):
+        return obj.category.slug if obj.category else None
+
+
+# Détail de produit
+# Détail de produit
+
+class ProductDetailSerializer(serializers.ModelSerializer):
+    """
+    Serializer pour les détails complets d'un produit.
+    """
+    image = serializers.SerializerMethodField()
+    category = serializers.SerializerMethodField()
+    category_slug = serializers.SerializerMethodField()
+    images = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = [
+            'id',
+            'name',
+            'slug',
+            'price',
+            'compare_at_price',
+            'image',
+            'image_url',
+            'images',
+            'category',
+            'category_slug',
+            'description',
+            'shot_description',
+            'stock',
+            'is_active',
+            'created_at',
+            'updated_at',
+        ]
+
+    def get_image(self, obj):
+        """Retourne l'image principale du produit"""
+        return obj.image_display_url
+
+    def get_category(self, obj):
+        """Retourne le nom de la catégorie"""
+        return obj.category.name if obj.category else None
+
+    def get_category_slug(self, obj):
+        """Retourne le slug de la catégorie"""
+        return obj.category.slug if obj.category else None
+
+    def get_images(self, obj):
+        """Retourne toutes les images du produit"""
+        images = obj.images.all()
+        return [
+            {
+                'id': img.id,
+                'image': img.image.url if img.image else None,
+                'is_primary': img.is_primary,
+            }
+            for img in images
+        ]
+
+
+# Commentaires
+# Commentaires
+
+class CommentaireSerializer(serializers.ModelSerializer):
+    """
+    Serializer pour les commentaires de produits.
+    """
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    stars_display = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Commentaire
+        fields = [
+            'id',
+            'product',
+            'product_name',
+            'nom',
+            'email',
+            'commentaire',
+            'note',
+            'stars_display',
+            'save_email',
+            'is_approved',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['is_approved', 'created_at', 'updated_at']
+    
+    def get_stars_display(self, obj):
+        """Retourne une représentation en étoiles de la note"""
+        return '★' * obj.note + '☆' * (5 - obj.note)
+    
+    def validate_note(self, value):
+        """Valide que la note est entre 1 et 5"""
+        if value < 1 or value > 5:
+            raise serializers.ValidationError("La note doit être entre 1 et 5.")
+        return value
+    
+    def validate_commentaire(self, value):
+        """Valide la longueur du commentaire"""
+        if len(value.strip()) < 10:
+            raise serializers.ValidationError("Le commentaire doit contenir au moins 10 caractères.")
+        if len(value) > 1000:
+            raise serializers.ValidationError("Le commentaire ne peut pas dépasser 1000 caractères.")
+        return value.strip()
+
+
+class CommentaireCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer pour créer un commentaire (sans is_approved visible).
+    """
+    class Meta:
+        model = Commentaire
+        fields = [
+            'product',
+            'nom',
+            'email',
+            'commentaire',
+            'note',
+            'save_email',
+        ]
+    
+    def validate_note(self, value):
+        """Valide que la note est entre 1 et 5"""
+        if value < 1 or value > 5:
+            raise serializers.ValidationError("La note doit être entre 1 et 5.")
+        return value
+    
+    def validate_commentaire(self, value):
+        """Valide la longueur du commentaire"""
+        if len(value.strip()) < 10:
+            raise serializers.ValidationError("Le commentaire doit contenir au moins 10 caractères.")
+        if len(value) > 1000:
+            raise serializers.ValidationError("Le commentaire ne peut pas dépasser 1000 caractères.")
+        return value.strip()
+
+
+class ProductCommentairesSummarySerializer(serializers.Serializer):
+    """
+    Serializer pour le résumé des commentaires d'un produit.
+    """
+    total_count = serializers.IntegerField()
+    average_rating = serializers.FloatField()
+    rating_distribution = serializers.DictField()
+    commentaires = CommentaireSerializer(many=True)

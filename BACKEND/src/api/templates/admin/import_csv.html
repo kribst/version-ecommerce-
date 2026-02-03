@@ -17,14 +17,21 @@
 
 <div class="module aligned">
     <h2>Instructions</h2>
-    <p>Le fichier CSV doit contenir les colonnes suivantes :</p>
+    <p>Le fichier CSV doit contenir au minimum la colonne <strong>NOMS</strong> (nom du produit). Les autres colonnes sont optionnelles.</p>
+    <p><small>Astuce : les en-têtes sont tolérants (casse/accents/espaces). Exemple : <em>Catégories</em>, <em>categories</em>, <em>category</em> fonctionnent.</small></p>
     <ul>
-        <li><strong>NOMS</strong> : Nom du produit (obligatoire, unique)</li>
-        <li><strong>Catégories</strong> : Nom de la catégorie (sera créée automatiquement si elle n'existe pas)</li>
+        <li><strong>NOMS</strong> : Nom du produit (obligatoire)</li>
+        <li><strong>Catégories</strong> : Nom de la catégorie (créée automatiquement si elle n'existe pas)</li>
+        <li><strong>Catégorie parent</strong> : Nom de la catégorie parente (créée automatiquement si elle n'existe pas)</li>
+        <li><strong>Sous parent</strong> : Nom de la sous-catégorie parente (créée automatiquement si elle n'existe pas)</li>
+        <li><strong>Image parent</strong> : URL <code>http(s)</code> de l'image de la catégorie parent (téléchargée et associée automatiquement)</li>
         <li><strong>Description courte</strong> : Description courte du produit</li>
         <li><strong>Description</strong> : Description complète du produit</li>
         <li><strong>PRIX</strong> : Prix du produit (nombre)</li>
-        <li><strong>IMAGES</strong> : URL de l'image à télécharger</li>
+        <li><strong>COMPARE_AT_PRICE</strong> : Ancien prix / prix barré (optionnel)</li>
+        <li><strong>STOCK</strong> : Stock (optionnel)</li>
+        <li><strong>ACTIF</strong> : Statut actif (ex: <em>oui/non</em>, <em>1/0</em>, <em>true/false</em>)</li>
+        <li><strong>IMAGES</strong> : URL de l'image du produit (si URL <code>http(s)</code>, l'image peut être téléchargée automatiquement)</li>
     </ul>
 </div>
 

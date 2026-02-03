@@ -5,37 +5,93 @@ import { SiteSettingsProvider } from "../context/SiteSettingsContext";
 import { WishlistProvider } from "../context/WishlistContext";
 import { CartProvider } from "../context/CartContext";
 
-// Fonction serveur pour précharger les settings
+// Fonction serveur pour précharger les settings avec gestion d'erreur
 async function fetchSiteSettings() {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/site-settings/`);
-  if (!res.ok) throw new Error("Impossible de charger les settings");
-  return res.json();
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    
+    // Si l'URL de l'API n'est pas définie, retourner des valeurs par défaut
+    if (!apiUrl) {
+      console.warn("NEXT_PUBLIC_API_URL n'est pas défini");
+      return null;
+    }
+
+    // Ajouter un timeout pour éviter que l'application reste bloquée
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 secondes de timeout
+
+    try {
+      const res = await fetch(`${apiUrl}/api/site-settings/`, {
+        signal: controller.signal,
+        cache: 'no-store', // Pour éviter le cache en développement
+      });
+      
+      clearTimeout(timeoutId);
+
+      // Si la requête échoue, retourner null au lieu de lancer une erreur
+      if (!res.ok) {
+        console.warn(`Erreur API site-settings: ${res.status} ${res.statusText}`);
+        return null;
+      }
+
+      return await res.json();
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      
+      // Gérer les erreurs de réseau, timeout, etc.
+      if (fetchError.name === 'AbortError') {
+        console.warn("Timeout lors du chargement des settings");
+      } else {
+        console.warn("Erreur lors du chargement des settings:", fetchError.message);
+      }
+      return null;
+    }
+  } catch (error) {
+    console.warn("Erreur inattendue lors du chargement des settings:", error.message);
+    return null;
+  }
 }
 
 // Export metadata pour SEO (Next.js App Router)
 export async function generateMetadata() {
-  const settings = await fetchSiteSettings();
-  
-  // NEXT_PUBLIC_API_URL doit être défini dans les variables d'environnement (production et développement)
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-  
-  const metadata = {
-    title: settings?.company_name || "Mon App",
-    description: settings?.meta_description || settings?.about || "Application Next.js",
-  };
-  
-  // Ajouter le favicon si présent
-  if (settings?.favicon && apiUrl) {
-    metadata.icons = {
-      icon: `${apiUrl}${settings.favicon}`,
+  try {
+    const settings = await fetchSiteSettings();
+    
+    // NEXT_PUBLIC_API_URL doit être défini dans les variables d'environnement (production et développement)
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    
+    const metadata = {
+      title: settings?.company_name || "Mon App",
+      description: settings?.meta_description || settings?.about || "Application Next.js",
+    };
+    
+    // Ajouter le favicon si présent
+    if (settings?.favicon && apiUrl) {
+      metadata.icons = {
+        icon: `${apiUrl}${settings.favicon}`,
+      };
+    }
+    
+    return metadata;
+  } catch (error) {
+    // En cas d'erreur, retourner des métadonnées par défaut
+    console.warn("Erreur lors de la génération des métadonnées:", error.message);
+    return {
+      title: "Mon App",
+      description: "Application Next.js",
     };
   }
-  
-  return metadata;
 }
 
 export default async function RootLayout({ children }) {
-  const settings = await fetchSiteSettings(); // SSR: fetch côté serveur
+  // SSR: fetch côté serveur avec gestion d'erreur
+  let settings = null;
+  try {
+    settings = await fetchSiteSettings();
+  } catch (error) {
+    // Si le chargement échoue, l'application continue avec des valeurs par défaut
+    console.warn("Impossible de charger les settings au démarrage:", error.message);
+  }
 
   return (
     <html lang="fr">

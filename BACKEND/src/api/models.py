@@ -117,6 +117,12 @@ class ParametrePage(models.Model):
         default=12,
         help_text=_("Nombre de produits récents à afficher par catégorie")
     )
+    
+    # Configuration section Commentaires
+    commentaires_per_page = models.PositiveIntegerField(
+        default=4,
+        help_text=_("Nombre de commentaires à afficher initialement sur la page produit")
+    )
 
     # Horodatage
     created_at = models.DateTimeField(auto_now_add=True)
@@ -184,14 +190,15 @@ class Category(models.Model):
         return self.name
 
 
+
 class Product(models.Model):
     name = models.CharField(max_length=200, unique=True)
     category = models.ForeignKey(Category, related_name='products', on_delete=models.SET_NULL, null=True, blank=True)
     slug = models.SlugField(max_length=200, unique=True)
     description = models.TextField(blank=True)
     shot_description = models.TextField(blank=True)
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-    compare_at_price = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    price = models.IntegerField(default=0)
+    compare_at_price = models.IntegerField(blank=True, null=True)
     image = models.ImageField(upload_to='products/', blank=True)
     image_url = models.URLField(max_length=500, blank=True, null=True, help_text="URL externe de l'image source")
     stock = models.IntegerField(default=0)
@@ -213,6 +220,90 @@ class Product(models.Model):
         elif self.image_url:
             return self.image_url
         return None
+
+    @property
+    def average_rating(self):
+        """Retourne la note moyenne des commentaires approuvés"""
+        from django.db.models import Avg
+        avg = self.commentaires.filter(is_approved=True).aggregate(Avg('note'))['note__avg']
+        return round(avg, 1) if avg else 0.0
+
+    @property
+    def comment_count(self):
+        """Retourne le nombre de commentaires approuvés"""
+        return self.commentaires.filter(is_approved=True).count()
+
+
+class Commentaire(models.Model):
+    """
+    Modèle pour les commentaires sur les produits.
+    """
+    RATING_CHOICES = [
+        (1, '1 étoile'),
+        (2, '2 étoiles'),
+        (3, '3 étoiles'),
+        (4, '4 étoiles'),
+        (5, '5 étoiles'),
+    ]
+    
+    product = models.ForeignKey(
+        Product,
+        related_name='commentaires',
+        on_delete=models.CASCADE,
+        verbose_name="Produit"
+    )
+    nom = models.CharField(max_length=100, verbose_name="Nom")
+    email = models.EmailField(verbose_name="Email")
+    commentaire = models.TextField(max_length=1000, verbose_name="Commentaire")
+    note = models.IntegerField(
+        choices=RATING_CHOICES,
+        verbose_name="Note",
+        help_text="Note de 1 à 5 étoiles"
+    )
+    save_email = models.BooleanField(
+        default=False,
+        verbose_name="Enregistrer l'email",
+        help_text="Le client autorise l'enregistrement de son email"
+    )
+    is_approved = models.BooleanField(
+        default=False,
+        verbose_name="Approuvé",
+        help_text="Le commentaire doit être approuvé avant d'être visible"
+    )
+    is_flagged = models.BooleanField(
+        default=False,
+        verbose_name="Signalé",
+        help_text="Commentaire signalé comme inapproprié"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Date de création")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Date de modification")
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Commentaire"
+        verbose_name_plural = "Commentaires"
+        indexes = [
+            models.Index(fields=['product', 'is_approved']),
+            models.Index(fields=['created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.nom} - {self.product.name} ({self.note}/5)"
+    
+    def clean(self):
+        """Validation personnalisée"""
+        from django.core.exceptions import ValidationError
+        
+        # Valider la note
+        if self.note < 1 or self.note > 5:
+            raise ValidationError({'note': 'La note doit être entre 1 et 5.'})
+        
+        # Valider la longueur du commentaire
+        if len(self.commentaire.strip()) < 10:
+            raise ValidationError({'commentaire': 'Le commentaire doit contenir au moins 10 caractères.'})
+        
+        if len(self.commentaire) > 1000:
+            raise ValidationError({'commentaire': 'Le commentaire ne peut pas dépasser 1000 caractères.'})
 
 
 class ProductImage(models.Model):
@@ -277,7 +368,6 @@ class ProductCarousel(models.Model):
 # produit promotion
 # produit promotion
 
-
 class ProductPromotion(models.Model):
     product = models.OneToOneField(
         Product,
@@ -285,9 +375,9 @@ class ProductPromotion(models.Model):
         on_delete=models.CASCADE
     )
 
-    promo_price = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
+    promo_price = models.IntegerField(
+        blank=True,
+        null=True,
         help_text="Prix promotionnel"
     )
 
@@ -331,7 +421,7 @@ class ProductPromotion(models.Model):
 
     @property
     def discount_percent(self):
-        if self.product.price > 0:
+        if self.product.price > 0 and self.promo_price:
             return round(
                 ((self.product.price - self.promo_price) / self.product.price) * 100,
                 2
@@ -340,11 +430,9 @@ class ProductPromotion(models.Model):
 
 
 
-
 # produit flash
 # produit flash
 
-from django.db import models
 
 class ProductFlash(models.Model):
     title = models.CharField(max_length=200, blank=True)
@@ -359,7 +447,7 @@ class ProductFlash(models.Model):
         'Product',
         blank=True,
         related_name='flash_secondary',
-        help_text="Sélectionnez plusieurs produits secondaires pour ce flash"
+        help_text="Sélectionnez maximum 8 produits secondaires pour ce flash"
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -422,6 +510,8 @@ class FlashProductItem(models.Model):
     # start/end pour le principal uniquement
     start_date = models.DateTimeField(null=True, blank=True)
     end_date = models.DateTimeField(null=True, blank=True)
+    compare_at_price = models.IntegerField(blank=True, null=True, help_text="Prix de comparaison (ancien prix)")
+
 
     class Meta:
         ordering = ['id']

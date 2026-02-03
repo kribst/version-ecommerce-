@@ -4,8 +4,27 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.urls import path
 from django.http import HttpResponse, JsonResponse
+from .forms import CsvImportForm, ImageImportForm, CategoryCsvImportForm
+import csv
+import io
+import requests
+from requests.exceptions import RequestException
+from urllib.parse import urlparse
+from django.core.files.base import ContentFile
+from django.utils.text import slugify
+import os
+from pathlib import Path
+from django.conf import settings
+from django.core.paginator import Paginator
+from django.utils import timezone
+from datetime import datetime
+from urllib.parse import quote
+
 from decimal import InvalidOperation, Decimal
-from .models import SiteSettings, Category, Product, ProductImage, ProductCarousel, ProductPromotion, ParametrePage
+from .models import SiteSettings, Category, Product, ProductImage, ProductCarousel, ProductPromotion, ParametrePage, Commentaire
+
+
+
 
 # Personnaliser le titre de l'administration avec le nom de l'entreprise
 try:
@@ -20,22 +39,9 @@ except:
     # Si SiteSettings n'existe pas encore ou erreur, utiliser la valeur par défaut
     admin.site.site_header = "Django Administration"
     admin.site.site_title = "Django Admin"
-from .forms import CsvImportForm, ImageImportForm, CategoryCsvImportForm
-import csv
-import io
-import requests
-from requests.exceptions import RequestException
-from urllib.parse import urlparse
-from django.core.files.base import ContentFile
-from django.utils.text import slugify
 
-import os
-from pathlib import Path
-from django.conf import settings
-from django.core.paginator import Paginator
-from django.utils import timezone
-from datetime import datetime
-from urllib.parse import quote
+
+
 
 
 # Informations générales sur l'entreprise
@@ -124,7 +130,7 @@ class SiteSettingsAdmin(admin.ModelAdmin):
 @admin.register(ParametrePage)
 class ParametrePageAdmin(admin.ModelAdmin):
     # Affichage rapide dans la liste
-    list_display = ("new_products_category_limit", "new_products_per_category_limit", "updated_at")
+    list_display = ("new_products_category_limit", "new_products_per_category_limit", "commentaires_per_page", "updated_at")
     list_display_links = ("new_products_category_limit",)
 
     # Empêche l'ajout de plusieurs instances (singleton)
@@ -140,6 +146,10 @@ class ParametrePageAdmin(admin.ModelAdmin):
         ("Section Nouveaux produits", {
             "fields": ("new_products_category_limit", "new_products_per_category_limit"),
             "description": "Contrôle du nombre de catégories et de produits affichés dans la section Nouveaux produits.",
+        }),
+        ("Section Commentaires", {
+            "fields": ("commentaires_per_page",),
+            "description": "Contrôle du nombre de commentaires affichés initialement sur la page produit.",
         }),
         ("Horodatage", {
             "fields": ("created_at", "updated_at"),
@@ -163,6 +173,8 @@ class ParametrePageAdmin(admin.ModelAdmin):
 
 # Informations générales sur les produits
 # Informations générales sur les produits
+
+
 
 
 # ==================== CATEGORY ====================
@@ -671,6 +683,16 @@ class ProductAdmin(admin.ModelAdmin):
 
     image_url_display.short_description = "URL source de l'image"
 
+    def _get_unique_slug(self, name):
+        """Génère un slug unique pour une catégorie."""
+        base_slug = slugify(name)
+        slug = base_slug
+        counter = 1
+        while Category.objects.filter(slug=slug).exists():
+            slug = f"{base_slug}-{counter}"
+            counter += 1
+        return slug
+
     def get_queryset(self, request):
         """Override pour nettoyer les valeurs Decimal invalides lors de la récupération"""
         qs = super().get_queryset(request)
@@ -737,106 +759,318 @@ class ProductAdmin(admin.ModelAdmin):
         return custom_urls + urls
 
     def import_csv_view(self, request):
-        """Vue pour importer un fichier CSV"""
+        """Import de produits via CSV (headers flexibles, catégorie + hiérarchie optionnelle, image URL optionnelle)."""
         if request.method == 'POST':
             form = CsvImportForm(request.POST, request.FILES)
             if form.is_valid():
                 csv_file = request.FILES['csv_file']
 
-                # Lire le fichier CSV
-                # Décoder en UTF-8 avec gestion d'erreurs
+                # Lecture du fichier CSV avec gestion d'encodage (évite le double read())
                 try:
-                    file_data = csv_file.read().decode('utf-8-sig')  # utf-8-sig gère le BOM
+                    file_bytes = csv_file.read()
+                    file_data = file_bytes.decode('utf-8-sig')  # utf-8-sig gère le BOM
                 except UnicodeDecodeError:
-                    file_data = csv_file.read().decode('latin-1')
+                    file_data = file_bytes.decode('latin-1')
 
                 io_string = io.StringIO(file_data)
                 reader = csv.DictReader(io_string)
 
-                success_count = 0
-                error_count = 0
+                created_count = 0
+                updated_count = 0
                 errors = []
+
+                def clean_dict(row):
+                    return {
+                        (k or '').strip().lower(): (v.strip() if isinstance(v, str) else v)
+                        for k, v in row.items()
+                    }
+
+                def get_value(data, keys):
+                    for key in keys:
+                        if key in data and data[key] is not None:
+                            return data[key]
+                    return ''
+
+                def parse_bool(val, default=True):
+                    if val is None:
+                        return default
+                    s = str(val).strip().lower()
+                    if s == '':
+                        return default
+                    if s in {'1', 'true', 'yes', 'y', 'oui', 'vrai', 'on', 'actif', 'active'}:
+                        return True
+                    if s in {'0', 'false', 'no', 'n', 'non', 'faux', 'off', 'inactif', 'inactive'}:
+                        return False
+                    return default
+
+                def parse_int(val, default=0):
+                    if val is None:
+                        return default
+                    s = str(val).strip()
+                    if s == '':
+                        return default
+                    try:
+                        return int(float(s.replace(' ', '').replace(',', '.')))
+                    except Exception:
+                        return default
+
+                def parse_decimal(val, default=None):
+                    if val is None:
+                        return default
+                    s = str(val).strip()
+                    if s == '':
+                        return default
+                    try:
+                        s = s.replace(' ', '').replace(',', '.')
+                        d = Decimal(str(float(s))).quantize(Decimal('0.01'))
+                        if d < 0 or d > Decimal('99999999.99'):
+                            return default
+                        return d
+                    except Exception:
+                        return default
+
+                def maybe_download_category_image(category_obj, image_url_value, *, label_for_errors):
+                    """Télécharge et associe une image à une catégorie si URL http(s) fournie."""
+                    if not category_obj or not image_url_value:
+                        return
+                    if not isinstance(image_url_value, str):
+                        return
+                    image_url_value = image_url_value.strip()
+                    if not image_url_value.startswith(('http://', 'https://')):
+                        return
+                    try:
+                        response = requests.get(image_url_value, timeout=10)
+                        response.raise_for_status()
+
+                        extension = Path(urlparse(image_url_value).path).suffix.lower()
+                        valid_extensions = {'.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.svg'}
+                        if extension not in valid_extensions:
+                            extension = '.jpg'
+
+                        filename = f"{slugify(category_obj.name)}{extension}"
+                        category_obj.image.save(filename, ContentFile(response.content), save=False)
+                        category_obj.save(update_fields=['image'])
+                    except RequestException as e:
+                        errors.append(f"{label_for_errors}: Image de catégorie non téléchargée ({str(e)})")
 
                 for row_num, row in enumerate(reader, start=2):  # start=2 car ligne 1 = header
                     try:
-                        # Nettoyer les clés du dictionnaire (enlever espaces)
-                        row = {k.strip(): v.strip() if isinstance(v, str) else v for k, v in row.items()}
+                        cleaned_row = clean_dict(row)
 
                         # Récupérer les données
-                        name = row.get('NOMS', '').strip()
-                        category_name = row.get('Catégories', '').strip()
-                        short_description = row.get('Description courte', '').strip()
-                        description = row.get('Description', '').strip()
-                        price_str = row.get('PRIX', '0').strip()
-                        image_url = row.get('IMAGES', '').strip()
+                        name = get_value(cleaned_row, ['noms', 'nom', 'name', 'produit', 'product', 'designation', 'désignation'])
+                        category_name = get_value(cleaned_row, ['catégories', 'categories', 'catégorie', 'categorie', 'category'])
+                        parent_name = get_value(cleaned_row, ['categorie parent', 'catégorie parent', 'parent', 'parent_category'])
+                        sub_parent_name = get_value(cleaned_row, ['sous parent', 'sous_parent', 'subparent', 'sub_parent'])
+                        parent_image_url = get_value(cleaned_row, [
+                            'image parent', 'image catégorie parent', 'image categorie parent',
+                            'parent image', 'parent_image', 'parent_image_url',
+                            'image_parent', 'image_parent_url',
+                            'parent url', 'parent_url',
+                        ])
+                        short_description = get_value(cleaned_row, ['description courte', 'short description', 'short_description', 'shot_description', 'résumé', 'resume'])
+                        description = get_value(cleaned_row, ['description', 'desc', 'details', 'détails'])
+                        price_str = get_value(cleaned_row, ['prix', 'price', 'montant', 'prx'])
+                        compare_at_str = get_value(cleaned_row, ['compare_at_price', 'compare at price', 'ancien prix', 'prix barré', 'old_price'])
+                        stock_str = get_value(cleaned_row, ['stock', 'quantite', 'quantité', 'qty', 'quantity'])
+                        is_active_str = get_value(cleaned_row, ['is_active', 'active', 'actif', 'status', 'etat', 'état'])
+                        image_url = get_value(cleaned_row, ['images', 'image', 'image_url', 'url', 'photo'])
 
                         # Validation des champs obligatoires
                         if not name:
                             errors.append(f"Ligne {row_num}: Le nom du produit est requis")
-                            error_count += 1
-                            continue
-
-                        # Vérifier si le produit existe déjà (nom unique)
-                        if Product.objects.filter(name=name).exists():
-                            errors.append(f"Ligne {row_num}: Le produit '{name}' existe déjà")
-                            error_count += 1
                             continue
 
                         # Gérer la catégorie
                         category = None
-                        if category_name:
-                            category, created = Category.objects.get_or_create(
-                                name=category_name,
-                                defaults={
-                                    'slug': slugify(category_name),
-                                    'description': f'Catégorie importée automatiquement pour {category_name}'
-                                }
-                            )
+                        
+                        # Parser le format "Parent>Enfant" si présent dans category_name
+                        if category_name and '>' in category_name:
+                            parts = [p.strip() for p in category_name.split('>') if p.strip()]
+                            if len(parts) == 2:
+                                # Format: "Ordinateur>Ecrans" -> parent="Ordinateur", category="Ecrans"
+                                if not parent_name:
+                                    parent_name = parts[0]
+                                category_name = parts[1]
+                            elif len(parts) == 3:
+                                # Format: "Parent>Sous-parent>Enfant"
+                                if not parent_name:
+                                    parent_name = parts[0]
+                                if not sub_parent_name:
+                                    sub_parent_name = parts[1]
+                                category_name = parts[2]
+                        
+                        if category_name or parent_name or sub_parent_name:
+                            # Hiérarchie (facultatif) pour créer/associer une catégorie
+                            parent_obj = None
+                            if parent_name:
+                                try:
+                                    parent_obj, _ = Category.objects.get_or_create(
+                                        name=parent_name,
+                                        defaults={
+                                            'slug': self._get_unique_slug(parent_name),
+                                            'description': f'Catégorie parente importée automatiquement pour {parent_name}'
+                                        }
+                                    )
+                                except Exception as e:
+                                    # Si erreur unique (race condition), essayer de récupérer la catégorie existante
+                                    try:
+                                        parent_obj = Category.objects.get(name=parent_name)
+                                    except Category.DoesNotExist:
+                                        errors.append(f"Ligne {row_num}: Erreur lors de la création de la catégorie parent '{parent_name}': {str(e)}")
+                                        continue
+                                
+                                # Optionnel: image de la catégorie parent via CSV (seulement si pas déjà définie)
+                                if parent_image_url and not parent_obj.image:
+                                    maybe_download_category_image(
+                                        parent_obj,
+                                        parent_image_url,
+                                        label_for_errors=f"Ligne {row_num}"
+                                    )
 
-                        # Parser le prix (gérer les espaces dans les nombres comme "108 500")
-                        try:
-                            price_str_cleaned = price_str.replace(' ', '').replace(',', '.')
-                            price_float = float(price_str_cleaned)
-                            # Convertir en Decimal de manière sûre
-                            price = Decimal(str(price_float)).quantize(Decimal('0.01'))
-                            # Vérifier que le prix est valide et dans les limites
-                            if price < 0 or price > Decimal('99999999.99'):
-                                price = Decimal('0.00')
-                        except (ValueError, AttributeError, InvalidOperation, TypeError):
-                            price = Decimal('0.00')
+                            sub_parent_obj = None
+                            if sub_parent_name:
+                                try:
+                                    sub_parent_obj, _ = Category.objects.get_or_create(
+                                        name=sub_parent_name,
+                                        defaults={
+                                            'slug': self._get_unique_slug(sub_parent_name),
+                                            'description': f'Sous-catégorie importée automatiquement pour {sub_parent_name}',
+                                            'parent': parent_obj
+                                        }
+                                    )
+                                except Exception as e:
+                                    # Si erreur unique (race condition), essayer de récupérer la catégorie existante
+                                    try:
+                                        sub_parent_obj = Category.objects.get(name=sub_parent_name)
+                                    except Category.DoesNotExist:
+                                        errors.append(f"Ligne {row_num}: Erreur lors de la création de la sous-catégorie '{sub_parent_name}': {str(e)}")
+                                        continue
+                                
+                                # Mettre à jour le parent si nécessaire
+                                if parent_obj and sub_parent_obj.parent_id != parent_obj.id:
+                                    sub_parent_obj.parent = parent_obj
+                                    sub_parent_obj.save(update_fields=['parent'])
 
-                        # Créer le produit avec l'URL de l'image stockée
-                        product = Product.objects.create(
+                            final_parent = sub_parent_obj or parent_obj
+
+                            if category_name:
+                                try:
+                                    category, _ = Category.objects.get_or_create(
+                                        name=category_name,
+                                        defaults={
+                                            'slug': self._get_unique_slug(category_name),
+                                            'description': f'Catégorie importée automatiquement pour {category_name}',
+                                            'parent': final_parent
+                                        }
+                                    )
+                                except Exception as e:
+                                    # Si erreur unique (race condition), essayer de récupérer la catégorie existante
+                                    try:
+                                        category = Category.objects.get(name=category_name)
+                                    except Category.DoesNotExist:
+                                        errors.append(f"Ligne {row_num}: Erreur lors de la création de la catégorie '{category_name}': {str(e)}")
+                                        continue
+                                
+                                # Mettre à jour le parent si nécessaire
+                                if final_parent and category.parent_id != final_parent.id:
+                                    category.parent = final_parent
+                                    category.save(update_fields=['parent'])
+
+                        price = parse_decimal(price_str, default=Decimal('0.00'))
+                        compare_at_price = parse_decimal(compare_at_str, default=None)
+                        stock = parse_int(stock_str, default=0)
+                        is_active = parse_bool(is_active_str, default=True)
+
+                        # Créer ou mettre à jour (pas d'erreur si le produit existe déjà)
+                        product, created = Product.objects.get_or_create(
                             name=name,
-                            category=category,
-                            slug=slugify(name),
-                            description=description,
-                            shot_description=short_description,
-                            price=price,
-                            stock=0,  # Par défaut
-                            is_active=True,
-                            image_url=image_url if image_url else None  # IMPORTANT : Stocker l'URL
+                            defaults={
+                                'category': category,
+                                'slug': slugify(name),
+                                'description': description,
+                                'shot_description': short_description,
+                                'price': price,
+                                'compare_at_price': compare_at_price,
+                                'stock': stock,
+                                'is_active': is_active,
+                                'image_url': image_url if image_url else None,
+                            }
                         )
 
-                        # Ne pas télécharger l'image maintenant - elle sera téléchargée via le bouton "Importer les images"
-                        # L'URL est stockée dans image_url pour un téléchargement ultérieur
+                        if created:
+                            created_count += 1
+                        else:
+                            update_fields = []
+                            # Mettre à jour seulement si valeur fournie
+                            if category is not None and product.category_id != getattr(category, 'id', None):
+                                product.category = category
+                                update_fields.append('category')
+                            if description != '' and description != (product.description or ''):
+                                product.description = description
+                                update_fields.append('description')
+                            if short_description != '' and short_description != (product.shot_description or ''):
+                                product.shot_description = short_description
+                                update_fields.append('shot_description')
+                            if price is not None and product.price != price:
+                                product.price = price
+                                update_fields.append('price')
+                            # compare_at_price peut être None -> on ne l'écrase que si la colonne est présente
+                            if compare_at_str != '':
+                                if product.compare_at_price != compare_at_price:
+                                    product.compare_at_price = compare_at_price
+                                    update_fields.append('compare_at_price')
+                            if stock_str != '' and product.stock != stock:
+                                product.stock = stock
+                                update_fields.append('stock')
+                            if is_active_str != '' and product.is_active != is_active:
+                                product.is_active = is_active
+                                update_fields.append('is_active')
+                            if image_url != '' and (product.image_url or '') != image_url:
+                                product.image_url = image_url
+                                update_fields.append('image_url')
 
-                        success_count += 1
+                            # Conserver un slug cohérent si absent
+                            if not product.slug:
+                                product.slug = slugify(name)
+                                update_fields.append('slug')
+
+                            if update_fields:
+                                product.save(update_fields=update_fields)
+                                updated_count += 1
+
+                        # Optionnel: si image_url est une vraie URL, on peut télécharger l'image principale directement
+                        if image_url and isinstance(image_url, str) and image_url.startswith(('http://', 'https://')):
+                            try:
+                                response = requests.get(image_url, timeout=10)
+                                response.raise_for_status()
+
+                                extension = Path(urlparse(image_url).path).suffix.lower()
+                                valid_extensions = {'.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.svg'}
+                                if extension not in valid_extensions:
+                                    extension = '.jpg'
+
+                                filename = f"{slugify(name)}{extension}"
+                                product.image.save(filename, ContentFile(response.content), save=False)
+                                product.save(update_fields=['image'])
+                            except RequestException as e:
+                                errors.append(f"Ligne {row_num}: Image non téléchargée ({str(e)})")
 
                     except Exception as e:
-                        error_count += 1
                         errors.append(f"Ligne {row_num}: Erreur - {str(e)}")
                         continue
 
                 # Afficher les messages
-                if success_count > 0:
-                    messages.success(
-                        request,
-                        f'{success_count} produit(s) importé(s) avec succès.'
-                    )
+                if created_count or updated_count:
+                    parts = []
+                    if created_count:
+                        parts.append(f"{created_count} créé(s)")
+                    if updated_count:
+                        parts.append(f"{updated_count} mis à jour")
+                    messages.success(request, f"Import terminé : {', '.join(parts)}.")
 
                 if errors:
-                    error_msg = f'{error_count} erreur(s) rencontrée(s):<ul>'
+                    error_msg = f'{len(errors)} erreur(s) rencontrée(s):<ul>'
                     for error in errors[:10]:  # Limiter à 10 erreurs
                         error_msg += f'<li>{error}</li>'
                     if len(errors) > 10:
@@ -1442,7 +1676,7 @@ class FlashProductItemInline(admin.StackedInline):
     max_num = 1  # Maximum un seul produit principal
     can_delete = True
     autocomplete_fields = ['product']
-    fields = ('product', 'is_main', 'start_date', 'end_date', 'countdown_display')
+    fields = ('product', 'is_main', 'compare_at_price', 'start_date', 'end_date', 'countdown_display')
     readonly_fields = ('is_main', 'countdown_display')  # is_main en readonly puisqu'il n'y a qu'un seul produit principal
     ordering = ('id',)
     verbose_name = "Produit principal"
@@ -1529,6 +1763,14 @@ class ProductFlashAdminForm(forms.ModelForm):
         cleaned_data = super().clean()
         secondary_products = cleaned_data.get('secondary_products')
         
+        # Limiter à 8 produits secondaires maximum
+        if secondary_products and secondary_products.count() > 8:
+            raise ValidationError({
+                'secondary_products': ValidationError(
+                    "Vous ne pouvez sélectionner que 8 produits secondaires maximum."
+                )
+            })
+        
         # Vérifier si un produit principal existe
         if self.instance and self.instance.pk:
             main_item = self.instance.main_item
@@ -1549,7 +1791,7 @@ class ProductFlashAdminForm(forms.ModelForm):
 @admin.register(ProductFlash)
 class ProductFlashAdmin(admin.ModelAdmin):
     form = ProductFlashAdminForm
-    list_display = ("title", "is_active", "created_at", "updated_at", "secondary_countdown")
+    list_display = ("title", "promo_price", "is_active", "created_at", "updated_at", "secondary_countdown")
     list_filter = ("is_active", "created_at")
     search_fields = ("title",)
     ordering = ("-created_at",)
@@ -1603,6 +1845,20 @@ class ProductFlashAdmin(admin.ModelAdmin):
                 return main_item.end_date.strftime("%d/%m/%Y %H:%M")
         return "Non définie"
     main_end_date_display.short_description = "Date de fin (produit principal)"
+
+    def promo_price(self, obj):
+        """Affiche le prix promotionnel du produit principal"""
+        if obj.pk:
+            main_item = obj.main_item
+            if main_item:
+                # Si promo_price existe sur FlashProductItem, l'utiliser
+                if hasattr(main_item, 'promo_price') and main_item.promo_price:
+                    return f"{main_item.promo_price:,} CFA".replace(',', ' ')
+                # Sinon, utiliser le prix du produit
+                if main_item.product and main_item.product.price:
+                    return f"{main_item.product.price:,} CFA".replace(',', ' ')
+        return "—"
+    promo_price.short_description = "Prix promo"
 
     def has_add_permission(self, request):
         """Empêche l'ajout d'un nouvel enregistrement s'il en existe déjà un"""
@@ -1716,3 +1972,49 @@ class ProductFlashAdmin(admin.ModelAdmin):
             }
         
         return super().change_view(request, object_id, form_url, extra_context)
+
+
+# Commentaires
+# Commentaires
+
+@admin.register(Commentaire)
+class CommentaireAdmin(admin.ModelAdmin):
+    list_display = [
+        'nom', 'commentaire', 'email', 'product', 'note',
+    ]
+    list_filter = ['is_approved', 'is_flagged', 'note', 'created_at', 'product']
+    search_fields = ['nom', 'email', 'commentaire', 'product__name']
+    readonly_fields = ['created_at', 'updated_at']
+    list_per_page = 20
+    
+    fieldsets = (
+        ('Informations du commentaire', {
+            'fields': ('product', 'nom', 'email', 'commentaire', 'note', 'save_email')
+        }),
+        ('Modération', {
+            'fields': ('is_approved', 'is_flagged')
+        }),
+        ('Dates', {
+            'fields': ('created_at', 'updated_at')
+        }),
+    )
+    
+    actions = ['approve_commentaires', 'reject_commentaires', 'flag_commentaires']
+    
+    def approve_commentaires(self, request, queryset):
+        """Approuver les commentaires sélectionnés"""
+        updated = queryset.update(is_approved=True, is_flagged=False)
+        self.message_user(request, f'{updated} commentaire(s) approuvé(s).')
+    approve_commentaires.short_description = "Approuver les commentaires sélectionnés"
+    
+    def reject_commentaires(self, request, queryset):
+        """Rejeter les commentaires sélectionnés"""
+        updated = queryset.update(is_approved=False)
+        self.message_user(request, f'{updated} commentaire(s) rejeté(s).')
+    reject_commentaires.short_description = "Rejeter les commentaires sélectionnés"
+    
+    def flag_commentaires(self, request, queryset):
+        """Signaler les commentaires sélectionnés"""
+        updated = queryset.update(is_flagged=True, is_approved=False)
+        self.message_user(request, f'{updated} commentaire(s) signalé(s).')
+    flag_commentaires.short_description = "Signaler les commentaires sélectionnés"
