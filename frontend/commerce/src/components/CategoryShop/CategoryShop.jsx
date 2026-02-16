@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import axios from "axios";
+import Link from "next/link";
 
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Autoplay } from "swiper/modules";
@@ -110,21 +111,22 @@ export default function ShopCarousel() {
                 </div>
 
                 <div className={`${styles.shopBody} shop-body`}>
-                  <h4 className={styles.catTitle}>
-                    <span className={styles.catName} title={cat.name}>
-                      {cat.name}
-                    </span>
-                    <span className={styles.catCollection}>Collection</span>
-                  </h4>
-        
+                  <Link href={`/category/${cat.slug}`}>
+                    <h4 className={styles.catTitle}>
+                      <span className={styles.catName} title={cat.name}>
+                        {cat.name}
+                      </span>
+                      <span className={styles.catCollection}>Collection</span>
+                    </h4>
+                  </Link>
 
-                  <a
+                  <Link
                     href={`/category/${cat.slug}`}
                     className={styles.ctaBtn}
                   >
                     Shop now
                     <i className="fa fa-arrow-circle-right"></i>
-                  </a>
+                  </Link>
                 </div>
               </div>
             </SwiperSlide>

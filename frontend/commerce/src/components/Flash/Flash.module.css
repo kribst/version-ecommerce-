@@ -1,10 +1,15 @@
+/* =========================
+   SECTION
+========================= */
 .section {
-  background: rgba(233, 95, 41, 0.5);
-  padding-top: 4rem;
-  padding-bottom: 4rem;
+  background: #EFF1DB;
+  padding: 4rem 0;
   margin: 0;
 }
 
+/* =========================
+   CONTAINER
+========================= */
 .container {
   margin-left: auto;
   margin-right: auto;
@@ -14,7 +19,9 @@
   max-width: 1280px;
 }
 
-/* Title Section */
+/* =========================
+   TITLE
+========================= */
 .titleWrapper {
   margin-bottom: 2rem;
   text-align: center;
@@ -40,54 +47,76 @@
   .title {
     font-size: 2.25rem;
   }
-  
+
   .titleWrapper {
     margin-bottom: 2.5rem;
   }
 }
 
+/* =========================
+   GRID (PARENT COMMUN)
+========================= */
 /* Mobile first */
 .grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 1.1rem;
+  gap: 1.2rem;
+  align-items: stretch;
 }
 
-/* Mobile large / petite tablette ≥ 640px */
-@media (min-width: 640px) {
-  .grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Tablet ≥ 768px */
+/* Tablet */
 @media (min-width: 768px) {
   .grid {
     grid-template-columns: 1fr;
   }
 }
 
-/* Laptop ≥ 1024px */
+/* Desktop */
 @media (min-width: 1024px) {
   .grid {
-    grid-template-columns: 1fr 3fr;
-    gap: 5px;
-    align-items: stretch;
+    grid-template-columns: 1fr 3fr; /* composant 1 | composant 2 */
+    gap: 1.5rem;
   }
 }
 
-.colTwo {
+/* =========================
+   COLONNES (COMPOSANTS)
+========================= */
+/* Les deux composants partagent la même logique */
+.colFour {
   width: 100%;
-  height: 100%;
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  min-height: 100%;
+  background: #E4E7ED;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+
+.colTwo {
+  width: 100%;
+  display: flex;
+ 
+  min-height: 100%;
+  background: #122620;
+  border-radius: 12px;
+  overflow: hidden;
+}
+/* Optionnel : égaliser visuellement */
+.colTwo {
+  padding: 1rem;
 }
 
 .colFour {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
+  padding: 1rem;
+}
+
+/* =========================
+   SÉCURITÉ CONTENU
+========================= */
+/* Empêche les débordements internes */
+.colTwo > *,
+.colFour > * {
+  min-width: 0;
 }

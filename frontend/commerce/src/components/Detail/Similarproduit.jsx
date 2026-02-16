@@ -8,7 +8,7 @@ import ProductCard from "@/components/ProductCard";
 import styles from "./Similarproduit.module.css";
 
 const buildImageUrl = (image) => {
-  if (!image) return "/img/shop01.png";
+  if (!image) return "/img/shop01.svg";
   if (typeof image === "string" && image.startsWith("http")) return image;
   return `${process.env.NEXT_PUBLIC_API_URL}${image}`;
 };

@@ -37,6 +37,7 @@
   padding: 1rem;
   border: 1px solid #e5e7eb;
   overflow: hidden;
+  cursor: zoom-in;
 }
 
 .mainImage img {
@@ -45,6 +46,7 @@
   object-fit: contain;
   border-radius: 8px;
   display: block;
+  transition: transform 0.3s ease;
 }
 
 .thumbnailImages {

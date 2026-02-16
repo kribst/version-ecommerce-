@@ -1,0 +1,128 @@
+.banner {
+  background-color: #000000;
+  color: #ffffff;
+  padding: 1.5rem 1rem;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.75rem;
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1 1 auto;
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background-color: #d10024;
+  color: #ffffff;
+  font-size: 1.6rem;
+}
+
+.textBlock {
+  display: flex;
+  flex-direction: column;
+}
+
+.smallLabel {
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #ff4b4b;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.15rem;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: 1.75rem;
+  flex-shrink: 0;
+}
+
+.contactButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.75rem;
+  background-color: #d10024;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border: none;
+  border-radius: 2px;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+  transition: background-color 0.15s ease, transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.contactButton:hover {
+  background-color: #a8001c;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
+}
+
+.phoneBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.phoneLabel {
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.phoneNumber {
+  margin-top: 0.15rem;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.phoneNumber:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .container {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .title {
+    font-size: 1.3rem;
+  }
+}
+

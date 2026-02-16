@@ -11,9 +11,22 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Charger les variables du fichier .env (sans dépendance python-dotenv)
+_env_path = BASE_DIR / ".env"
+if _env_path.exists():
+    with open(_env_path, encoding="utf-8") as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and not _line.startswith("#") and "=" in _line:
+                _key, _, _val = _line.partition("=")
+                _key, _val = _key.strip(), _val.strip().strip('"').strip("'")
+                if _key:
+                    os.environ.setdefault(_key, _val)
 
 
 # Quick-start development settings - unsuitable for production
@@ -140,22 +153,35 @@ USE_I18N = True
 
 USE_TZ = True
 
-# ...existing code...
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "192.168.8.101",  # IP du PC pour accès réseau
+]
 
-# CORS / CSRF pour Next.js en dev
+# CORS
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
+    "http://localhost:9100",       # Next.js PC
+    "http://127.0.0.1:9100",       # Next.js PC
+    "http://192.168.8.101:9100",   # Next.js téléphone
 ]
-CORS_ALLOW_CREDENTIALS = True  # si tu utilises cookies/auth depuis le front
 
+CORS_ALLOW_CREDENTIALS = True  # pour les cookies/session
+
+# CSRF
 CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:8000",  # Ajouter pour l'admin
-    "http://127.0.0.1:8000",  # Ajouter pour l'admin
+    "http://localhost:9100",
+    "http://127.0.0.1:9100",
+    "http://192.168.8.101:9100",  # Frontend mobile
+    "http://192.168.8.101:9000",  # Django
 ]
+
+# Cookies pour dev
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
+
 
 # Configuration des cookies pour l'admin (même domaine)
 # Pour l'admin Django, on garde les valeurs par défaut
@@ -184,5 +210,9 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# PayPal (paiement géré côté backend uniquement)
+# Définir dans l'environnement : PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET
+# Optionnel : PAYPAL_MODE=sandbox|live, PAYPAL_CURRENCY=EUR, PAYPAL_CFA_TO_EUR=655.957
 
 

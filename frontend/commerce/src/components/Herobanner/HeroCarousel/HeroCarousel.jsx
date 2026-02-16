@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { FaArrowLeft, FaArrowRight } from "react-icons/fa";
 import styles from "./HeroCarousel.module.css";
 import api from "@/utils/api";
 
 export default function HeroCarousel() {
+  const router = useRouter();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [slides, setSlides] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -114,6 +116,14 @@ export default function HeroCarousel() {
 
   const slide = slides[currentSlide];
 
+  const handleShopNow = () => {
+    if (!slide) return;
+    const target = slide.slug || slide.productId || slide.id;
+    if (target) {
+      router.push(`/product/${target}`);
+    }
+  };
+
   return (
     <div className={`d-flex align-items-center ${styles.carouselContainer}`}>
       <div className="row w-100 align-items-center g-3 g-md-4">
@@ -135,14 +145,14 @@ export default function HeroCarousel() {
             <div className="d-flex justify-content-center gap-3 mt-4">
               <button 
                 onClick={prevSlide}
-                className={styles.navBtn}
+                className={styles.navBtnPromo}
                 aria-label="Previous slide"
               >
                 <FaArrowLeft />
               </button>
               <button 
                 onClick={nextSlide}
-                className={styles.navBtn}
+                className={styles.navBtnPromo}
                 aria-label="Next slide"
               >
                 <FaArrowRight />
@@ -194,8 +204,8 @@ export default function HeroCarousel() {
               {slide.price.toLocaleString('fr-FR')} FCFA
             </p>
           )}
-
-          <button className={styles.shopBtn}>
+          
+          <button className={styles.shopBtn} onClick={handleShopNow}>
             Shop Now
           </button>
         </div>

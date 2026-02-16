@@ -151,7 +151,7 @@ const HeaderCart = () => {
             cart.map((item) => (
               <div className={styles.productWidget} key={item.id}>
                 <div className={styles.productImg}>
-                  <img src={item.image || "/img/shop01.png"} alt={item.name} />
+                  <img src={item.image || "/img/shop01.svg"} alt={item.name} />
                 </div>
 
                 <div className={styles.productBody}>

@@ -52,15 +52,147 @@
   }
   
   .orderBox {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
     margin-bottom: 20px;
+    overflow-x: auto;
   }
   
-  .orderRow {
-    display: flex;
-    justify-content: space-between;
+  .orderTable {
+    width: 100%;
+    min-width: 100%;
+    border-collapse: collapse;
+    border: 1px solid #eee;
+    table-layout: fixed;
+  }
+  
+  .orderTable thead {
+    background-color: #f8f9fa;
+  }
+  
+  .orderTable th {
+    padding: 15px;
+    text-align: left;
+    font-weight: bold;
+    border-bottom: 2px solid #ddd;
+  }
+  
+  .orderTable th:first-child {
+    width: 15%;
+  }
+  
+  .orderTable th:nth-child(2) {
+    width: 50%;
+  }
+  
+  .orderTable th:last-child {
+    width: 35%;
+    text-align: right;
+  }
+  
+  .orderTable td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+  
+  .orderTable td:last-child {
+    text-align: right;
+  }
+  
+  .orderTable tbody tr:last-child {
+    border-bottom: none;
+  }
+  
+  .orderTable tbody tr:hover {
+    background-color: #f8f9fa;
+  }
+  
+  .emptyCart {
+    text-align: center;
+    color: #999;
+    font-style: italic;
+  }
+  
+  .shippingRow {
+    border-top: 2px solid #eee;
+  }
+  
+  .totalRow {
+    background-color: #f8f9fa;
+    border-top: 2px solid #ddd;
+    font-weight: bold;
+  }
+  
+  .totalRow td {
+    padding-top: 15px;
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+  
+  .totalWordsRow {
+    background-color: #f8f9fa;
+  }
+  
+  .totalWordsRow td {
+    border-top: none;
+    border-bottom: none;
+  }
+  
+  .totalWordsCell {
+    text-align: center;
+    padding-top: 0;
+    padding-bottom: 15px;
+  }
+  
+  /* Responsive pour petits écrans */
+  @media (max-width: 768px) {
+    .orderTable {
+      font-size: 14px;
+    }
+    
+    .orderTable th,
+    .orderTable td {
+      padding: 10px 8px;
+    }
+    
+    .orderTable th:first-child {
+      width: 20%;
+    }
+    
+    .orderTable th:nth-child(2) {
+      width: 45%;
+    }
+    
+    .orderTable th:last-child {
+      width: 35%;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .orderTable {
+      font-size: 12px;
+    }
+    
+    .orderTable th,
+    .orderTable td {
+      padding: 8px 5px;
+    }
+    
+    .orderTable th:first-child {
+      width: 25%;
+    }
+    
+    .orderTable th:nth-child(2) {
+      width: 40%;
+    }
+    
+    .orderTable th:last-child {
+      width: 35%;
+    }
+    
+    .totalWords {
+      font-size: 0.75rem;
+    }
   }
   
   .total {
@@ -99,5 +231,28 @@
     font-size: 0.9rem;
     color: #555;
     font-style: italic;
+  }
+
+  .successMessage {
+    padding: 16px;
+    margin-bottom: 20px;
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+    border-radius: 6px;
+  }
+
+  .errorMessage {
+    padding: 16px;
+    margin-bottom: 20px;
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+    border-radius: 6px;
+  }
+
+  .btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
   }
   

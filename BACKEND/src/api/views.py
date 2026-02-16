@@ -3,15 +3,21 @@ from django.utils.timezone import now
 from rest_framework import viewsets, status, permissions, filters
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+import random
+from datetime import timedelta
 from .models import SiteSettings, ProductCarousel, ProductPromotion, Category, Product, ParametrePage
 from .serializers import SiteSettingsSerializer, ProductCarouselSerializer, ProductPromotionSerializer, \
     CategorySerializer, CategoryNewProductsSerializer, ParametrePageSerializer
-from .models import SiteSettings, ProductCarousel, ProductPromotion, Category, Product, ParametrePage, ProductFlash, FlashProductItem, Commentaire
+from .models import SiteSettings, ProductCarousel, ProductPromotion, Category, Product, ParametrePage, ProductFlash, FlashProductItem, Commentaire, PendingPayPalOrder, Order, OrderItem
 from .serializers import SiteSettingsSerializer, ProductCarouselSerializer, ProductPromotionSerializer, \
-    CategorySerializer, CategoryNewProductsSerializer, ParametrePageSerializer, MainFlashProductSerializer, SecondaryFlashProductSerializer, ProductSearchSerializer, ProductDetailSerializer, CommentaireSerializer, CommentaireCreateSerializer, ProductCommentairesSummarySerializer
+    CategorySerializer, CategoryNewProductsSerializer, ParametrePageSerializer, MainFlashProductSerializer, SecondaryFlashProductSerializer, ProductSearchSerializer, ProductDetailSerializer, CommentaireSerializer, CommentaireCreateSerializer, ProductCommentairesSummarySerializer, BoutiqueProductSerializer
 from django.db.models import Q, Count, Avg
 from rest_framework.throttling import UserRateThrottle, AnonRateThrottle
+from rest_framework.views import APIView
+from decimal import Decimal
+import os
 import re
+import requests
 
 # Create your views here.
 
@@ -389,6 +395,300 @@ class ProductSearchViewSet(viewsets.ViewSet):
         })
 
 
+# Promotions (page avec pagination)
+# Promotions (page avec pagination)
+
+class PromotionsViewSet(viewsets.ViewSet):
+    """
+    API endpoint pour la page Promotions.
+    Retourne tous les produits en promotion actifs avec pagination.
+    
+    Fonctionnalités:
+    - Pagination fixe: 24 produits par page
+    - Mélange des produits qui change toutes les 2 heures (protection anti-scraping)
+    - Protection anti-scraping: limitation stricte du nombre de produits par page
+    
+    Paramètres:
+    - page: numéro de page (défaut: 1)
+    """
+    permission_classes = [AllowAny]
+    serializer_class = ProductPromotionSerializer
+    throttle_classes = [AnonRateThrottle, UserRateThrottle]
+
+    def list(self, request):
+        """
+        Liste tous les produits en promotion actifs avec pagination et mélange.
+        Le mélange change toutes les 2 heures pour protéger contre le scraping.
+        """
+        # Pagination fixe: 24 produits par page
+        page_size = 24
+        
+        # Pagination
+        page = int(request.query_params.get('page', 1))
+        
+        # Validation
+        if page < 1:
+            page = 1
+
+        # Base queryset: uniquement les promotions actives
+        today = now()
+        
+        # Construire le queryset avec des filtres permissifs
+        # Inclure toutes les promotions actives avec produits actifs
+        queryset = ProductPromotion.objects.filter(
+            is_active=True,
+            product__is_active=True
+        )
+        
+        # Filtrer par dates : inclure les promotions valides
+        # Une promotion est valide si :
+        # - start_date est None OU start_date <= today (promotion a commencé ou pas de date de début)
+        # - ET end_date est None OU end_date >= today (promotion n'est pas terminée ou pas de date de fin)
+        queryset = queryset.filter(
+            Q(start_date__isnull=True) | Q(start_date__lte=today)
+        ).filter(
+            Q(end_date__isnull=True) | Q(end_date__gte=today)
+        )
+        
+        queryset = queryset.select_related('product').order_by('-created_at')
+        
+        # Debug: compter le nombre de promotions trouvées
+        total_before_shuffle = queryset.count()
+        
+        # Calculer le seed pour le mélange basé sur l'heure actuelle (change toutes les 2 heures)
+        current_time = now()
+        two_hours_period = int(current_time.timestamp() // 7200)
+        
+        # Utiliser ce nombre comme seed pour le random
+        random.seed(two_hours_period)
+        
+        # Évaluer le queryset et convertir en liste pour pouvoir le mélanger
+        # Utiliser list() pour forcer l'évaluation du queryset
+        promotions_list = list(queryset.all())
+        
+        # Mélanger la liste avec le seed
+        random.shuffle(promotions_list)
+        
+        # Calculer le nombre total
+        total_count = len(promotions_list)
+        
+        # Pagination
+        start = (page - 1) * page_size
+        end = start + page_size
+        paginated_promotions = promotions_list[start:end]
+        
+        # Sérialiser les résultats
+        serializer = ProductPromotionSerializer(paginated_promotions, many=True)
+        
+        # Debug: vérifier le nombre de résultats sérialisés
+        serialized_count = len(serializer.data) if serializer.data else 0
+        
+        return Response({
+            'count': total_count,
+            'page': page,
+            'page_size': page_size,
+            'total_pages': (total_count + page_size - 1) // page_size if total_count > 0 else 0,
+            'results': serializer.data,
+            'has_next': end < total_count,
+            'has_previous': page > 1,
+            'debug': {
+                'total_before_shuffle': total_before_shuffle,
+                'total_after_shuffle': total_count,
+                'serialized_count': serialized_count,
+                'page_start': start,
+                'page_end': end,
+            },
+        })
+
+
+# Produits par catégorie
+# Produits par catégorie
+
+class CategoryProductsViewSet(viewsets.ViewSet):
+    """
+    API endpoint pour les produits d'une catégorie spécifique.
+    Retourne tous les produits actifs d'une catégorie avec pagination.
+    
+    Fonctionnalités:
+    - Pagination configurable via ParametrePage (défaut: 24 produits par page)
+    - Mélange des produits qui change toutes les 2 heures (protection anti-scraping)
+    - Protection anti-scraping: limitation stricte du nombre de produits par page
+    
+    Paramètres:
+    - category_slug: slug de la catégorie (requis)
+    - page: numéro de page (défaut: 1)
+    """
+    permission_classes = [AllowAny]
+    serializer_class = BoutiqueProductSerializer
+    throttle_classes = [AnonRateThrottle, UserRateThrottle]
+
+    def list(self, request):
+        """
+        Liste tous les produits actifs d'une catégorie avec pagination et mélange.
+        Le mélange change toutes les 2 heures pour protéger contre le scraping.
+        """
+        category_slug = request.query_params.get('category_slug', '').strip()
+        
+        if not category_slug:
+            return Response({
+                'detail': 'Le paramètre category_slug est requis.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Vérifier que la catégorie existe
+        try:
+            category = Category.objects.get(slug=category_slug)
+        except Category.DoesNotExist:
+            return Response({
+                'detail': 'Catégorie non trouvée.'
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Récupérer la configuration
+        parametres = ParametrePage.load()
+        default_page_size = parametres.boutique_products_per_page if parametres else 24
+        
+        # Pagination
+        page = int(request.query_params.get('page', 1))
+        
+        # Protection: utiliser uniquement la valeur configurée dans l'admin
+        page_size = default_page_size
+        
+        # Validation
+        if page < 1:
+            page = 1
+        if page_size < 1:
+            page_size = 24
+
+        # Base queryset: uniquement les produits actifs de la catégorie
+        queryset = Product.objects.filter(
+            is_active=True,
+            category=category
+        ).select_related('category')
+        
+        # Calculer le seed pour le mélange basé sur l'heure actuelle (change toutes les 2 heures)
+        current_time = now()
+        two_hours_period = int(current_time.timestamp() // 7200)
+        
+        # Utiliser ce nombre comme seed pour le random
+        random.seed(two_hours_period)
+        
+        # Convertir le queryset en liste pour pouvoir le mélanger
+        products_list = list(queryset)
+        
+        # Mélanger la liste avec le seed
+        random.shuffle(products_list)
+        
+        # Calculer le nombre total
+        total_count = len(products_list)
+        
+        # Pagination
+        start = (page - 1) * page_size
+        end = start + page_size
+        paginated_products = products_list[start:end]
+        
+        # Sérialiser les résultats
+        serializer = BoutiqueProductSerializer(paginated_products, many=True)
+        
+        return Response({
+            'count': total_count,
+            'page': page,
+            'page_size': page_size,
+            'total_pages': (total_count + page_size - 1) // page_size if total_count > 0 else 0,
+            'results': serializer.data,
+            'has_next': end < total_count,
+            'has_previous': page > 1,
+            'category': {
+                'id': category.id,
+                'name': category.name,
+                'slug': category.slug,
+            }
+        })
+
+
+# Boutique
+# Boutique
+
+class BoutiqueViewSet(viewsets.ViewSet):
+    """
+    API endpoint pour la boutique.
+    Retourne tous les produits actifs avec pagination.
+    
+    Fonctionnalités:
+    - Pagination configurable via ParametrePage (défaut: 24 produits par page)
+    - Mélange des produits qui change toutes les 2 heures (protection anti-scraping)
+    - Protection anti-scraping: limitation stricte du nombre de produits par page
+    
+    Paramètres:
+    - page: numéro de page (défaut: 1)
+    - page_size: nombre de résultats par page (max: valeur configurée dans ParametrePage)
+    """
+    permission_classes = [AllowAny]
+    serializer_class = BoutiqueProductSerializer
+    throttle_classes = [AnonRateThrottle, UserRateThrottle]
+
+    def list(self, request):
+        """
+        Liste tous les produits actifs avec pagination et mélange.
+        Le mélange change toutes les 2 heures pour protéger contre le scraping.
+        """
+        # Récupérer la configuration
+        parametres = ParametrePage.load()
+        default_page_size = parametres.boutique_products_per_page if parametres else 24
+        
+        # Pagination
+        page = int(request.query_params.get('page', 1))
+        requested_page_size = request.query_params.get('page_size')
+        
+        # Protection: utiliser uniquement la valeur configurée dans l'admin
+        # Ignorer toute tentative de modifier page_size depuis l'API
+        page_size = default_page_size
+        
+        # Validation
+        if page < 1:
+            page = 1
+        if page_size < 1:
+            page_size = 24
+
+        # Base queryset: uniquement les produits actifs
+        queryset = Product.objects.filter(is_active=True).select_related('category')
+        
+        # Calculer le seed pour le mélange basé sur l'heure actuelle (change toutes les 2 heures)
+        # Utiliser le timestamp divisé par 7200 (2 heures en secondes) comme seed
+        current_time = now()
+        # Calculer le nombre de périodes de 2 heures depuis l'epoch
+        two_hours_period = int(current_time.timestamp() // 7200)
+        
+        # Utiliser ce nombre comme seed pour le random
+        random.seed(two_hours_period)
+        
+        # Convertir le queryset en liste pour pouvoir le mélanger
+        products_list = list(queryset)
+        
+        # Mélanger la liste avec le seed
+        random.shuffle(products_list)
+        
+        # Calculer le nombre total
+        total_count = len(products_list)
+        
+        # Pagination
+        start = (page - 1) * page_size
+        end = start + page_size
+        paginated_products = products_list[start:end]
+        
+        # Sérialiser les résultats
+        serializer = BoutiqueProductSerializer(paginated_products, many=True)
+        
+        return Response({
+            'count': total_count,
+            'page': page,
+            'page_size': page_size,
+            'total_pages': (total_count + page_size - 1) // page_size if total_count > 0 else 0,
+            'results': serializer.data,
+            'has_next': end < total_count,
+            'has_previous': page > 1,
+            'shuffle_seed': two_hours_period,  # Pour debug (peut être retiré en production)
+        })
+
+
 # Détail de produit
 # Détail de produit
 
@@ -648,3 +948,226 @@ class ProductCommentairesViewSet(viewsets.ViewSet):
             'has_next': end < total_count,
             'has_previous': page > 1
         })
+
+
+# Paiement PayPal (géré entièrement côté backend)
+# Paiement PayPal (géré entièrement côté backend)
+
+# Limites anti-abus
+PAYPAL_MAX_ITEMS = 50
+PAYPAL_MIN_AMOUNT_EUR = 0.01
+PAYPAL_MAX_AMOUNT_EUR = 50000
+CFA_TO_EUR_DEFAULT = Decimal("655.957")
+
+
+def _validate_cart(cart):
+    """Valide le panier et retourne (total_cfa, cart_snapshot) ou lève ValueError."""
+    if not isinstance(cart, list) or len(cart) > PAYPAL_MAX_ITEMS:
+        raise ValueError("Panier invalide ou trop d'articles.")
+    total_cfa = 0
+    snapshot = []
+    for i, item in enumerate(cart):
+        if not isinstance(item, dict):
+            raise ValueError(f"Article {i} invalide.")
+        try:
+            pid = item.get("id")
+            name = str(item.get("name", ""))[:255]
+            price = int(item.get("price", 0))
+            qty = max(1, int(item.get("quantity", 1)))
+        except (TypeError, ValueError):
+            raise ValueError(f"Article {i}: champs invalides.")
+        if price < 0 or not name:
+            raise ValueError(f"Article {i}: nom ou prix invalide.")
+        total_cfa += price * qty
+        snapshot.append({
+            "id": pid,
+            "name": name,
+            "price": price,
+            "quantity": qty,
+        })
+    if total_cfa <= 0:
+        raise ValueError("Le total du panier doit être strictement positif.")
+    return total_cfa, snapshot
+
+
+def _billing_snapshot(data):
+    """Extrait un snapshot facturation propre."""
+    return {
+        "email": (data.get("email") or "").strip()[:254],
+        "first_name": (data.get("first_name") or "").strip()[:100],
+        "last_name": (data.get("last_name") or "").strip()[:100],
+        "address": (data.get("address") or "").strip()[:255],
+        "city": (data.get("city") or "").strip()[:100],
+        "country": (data.get("country") or "").strip()[:100],
+        "zip_code": (data.get("zip_code") or "").strip()[:20],
+        "phone": (data.get("phone") or "").strip()[:50],
+    }
+
+
+class CreatePayPalOrderView(APIView):
+    """
+    Crée une commande PayPal côté serveur.
+    Body: cart (liste {id, name, price, quantity}), billing (email, first_name, ...), return_url, cancel_url.
+    Le montant est calculé côté serveur (panier) puis converti en devise PayPal (EUR par défaut).
+    """
+    permission_classes = [AllowAny]
+    throttle_classes = [AnonRateThrottle, UserRateThrottle]
+
+    def post(self, request):
+        try:
+            cart = request.data.get("cart", [])
+            billing = request.data.get("billing", {})
+            return_url = (request.data.get("return_url") or "").strip()[:500]
+            cancel_url = (request.data.get("cancel_url") or "").strip()[:500]
+        except Exception:
+            return Response(
+                {"detail": "Données invalides."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            total_cfa, cart_snapshot = _validate_cart(cart)
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        billing_snap = _billing_snapshot(billing)
+        if not billing_snap.get("email"):
+            return Response(
+                {"detail": "L'email de facturation est requis."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Conversion CFA -> EUR (taux configurable)
+        try:
+            rate = Decimal(os.environ.get("PAYPAL_CFA_TO_EUR", str(CFA_TO_EUR_DEFAULT)))
+        except Exception:
+            rate = CFA_TO_EUR_DEFAULT
+        if rate <= 0:
+            rate = CFA_TO_EUR_DEFAULT
+        amount_eur = (Decimal(total_cfa) / rate).quantize(Decimal("0.01"))
+        if amount_eur < PAYPAL_MIN_AMOUNT_EUR:
+            return Response(
+                {"detail": "Le montant minimum pour PayPal n'est pas atteint."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if amount_eur > PAYPAL_MAX_AMOUNT_EUR:
+            return Response(
+                {"detail": "Le montant maximum pour PayPal est dépassé."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        currency = os.environ.get("PAYPAL_CURRENCY", "EUR").strip().upper()[:3] or "EUR"
+
+        try:
+            from .paypal_service import create_order
+            result = create_order(
+                amount_value=amount_eur,
+                currency=currency,
+                return_url=return_url,
+                cancel_url=cancel_url,
+            )
+        except ValueError as e:
+            return Response(
+                {"detail": "PayPal n'est pas configuré. Définissez PAYPAL_CLIENT_ID et PAYPAL_CLIENT_SECRET sur le serveur."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except requests.RequestException:
+            return Response(
+                {"detail": "Impossible de contacter PayPal (vérifiez les identifiants ou le réseau)."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+        except Exception as e:
+            return Response(
+                {"detail": "Impossible de créer la commande PayPal. Réessayez plus tard."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        order_id = result["order_id"]
+        approve_url = result.get("approve_url", "")
+        pending = PendingPayPalOrder.objects.create(
+            paypal_order_id=order_id,
+            cart_snapshot=cart_snapshot,
+            billing_snapshot=billing_snap,
+            total_cfa=total_cfa,
+            amount_value=amount_eur,
+            currency=currency,
+            status=PendingPayPalOrder.STATUS_PENDING,
+        )
+        return Response(
+            {"orderId": order_id, "status": result.get("status", ""), "approveUrl": approve_url},
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class CapturePayPalOrderView(APIView):
+    """
+    Capture le paiement PayPal après approbation du client.
+    Body: orderId (ID de la commande PayPal).
+    Crée la commande en base et marque le pending comme capturé.
+    """
+    permission_classes = [AllowAny]
+    throttle_classes = [AnonRateThrottle, UserRateThrottle]
+
+    def post(self, request):
+        order_id = (request.data.get("orderId") or request.data.get("order_id") or "").strip()
+        if not order_id:
+            return Response(
+                {"detail": "orderId manquant."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            pending = PendingPayPalOrder.objects.get(
+                paypal_order_id=order_id,
+                status=PendingPayPalOrder.STATUS_PENDING,
+            )
+        except PendingPayPalOrder.DoesNotExist:
+            return Response(
+                {"detail": "Commande introuvable ou déjà traitée."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            from .paypal_service import capture_order
+            capture_order(order_id)
+        except Exception:
+            return Response(
+                {"detail": "Échec de la capture du paiement. Réessayez ou contactez le support."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        billing = pending.billing_snapshot or {}
+        order = Order.objects.create(
+            email=billing.get("email", ""),
+            first_name=billing.get("first_name", ""),
+            last_name=billing.get("last_name", ""),
+            address=billing.get("address", ""),
+            city=billing.get("city", ""),
+            country=billing.get("country", ""),
+            zip_code=billing.get("zip_code", ""),
+            phone=billing.get("phone", ""),
+            total_cfa=pending.total_cfa,
+            status=Order.STATUS_PAID,
+            payment_method=Order.PAYMENT_PAYPAL,
+            paypal_order_id=order_id,
+        )
+        for item in pending.cart_snapshot:
+            product_id = item.get("id")
+            try:
+                product = Product.objects.get(pk=product_id) if product_id else None
+            except Product.DoesNotExist:
+                product = None
+            OrderItem.objects.create(
+                order=order,
+                product=product,
+                name=item.get("name", ""),
+                price=int(item.get("price", 0)),
+                quantity=int(item.get("quantity", 1)),
+            )
+        pending.status = PendingPayPalOrder.STATUS_CAPTURED
+        pending.save(update_fields=["status"])
+
+        return Response(
+            {"success": True, "order_id": order.id, "detail": "Paiement effectué avec succès."},
+            status=status.HTTP_200_OK,
+        )

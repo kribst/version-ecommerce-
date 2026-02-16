@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { FaHeart } from 'react-icons/fa';
 import { useWishlist } from '../../../../context/WishlistContext';
 import { useCart } from '../../../../context/CartContext';
+import { getApiUrl } from '../../../../utils/api';
 import styles from './FlashPromo.module.css';
 
 const FlashPromo = () => {
@@ -35,7 +36,8 @@ const FlashPromo = () => {
     const fetchFlashProduct = async () => {
       try {
         setLoading(true);
-        const res = await axios.get('http://127.0.0.1:9000/api/flash-main-product/');
+        const apiUrl = getApiUrl();
+        const res = await axios.get(`${apiUrl}/api/flash-main-product/`);
         
         const data = res.data;
         
@@ -46,19 +48,20 @@ const FlashPromo = () => {
         }
 
         // Transformer les données de l'API
-        let imageUrl = '/img/shop01.png';
+        let imageUrl = '/img/shop01.svg';
         if (data.product_image) {
           imageUrl = data.product_image.startsWith('http')
             ? data.product_image
-            : `http://127.0.0.1:9000${data.product_image}`;
+            : `${apiUrl}${data.product_image}`;
         }
 
         const product = {
-          id: 'flash-main-product',
+          id: data.product_id,
           name: data.product_name,
-          slug: null,
-          price: data.compare_at_price ? parseFloat(data.compare_at_price) : parseFloat(data.product_price) || 0, // Prix pendant la promotion (compare_at_price)
-          oldPrice: parseFloat(data.product_price) || 0, // Prix avant la promotion (product_price)
+          slug: data.product_slug,
+          // On garde la même logique de prix que le bloc flash
+          price: data.compare_at_price ? parseFloat(data.compare_at_price) : parseFloat(data.product_price) || 0,
+          oldPrice: parseFloat(data.product_price) || 0,
           image: imageUrl,
         };
 
@@ -143,17 +146,20 @@ const FlashPromo = () => {
   };
 
   const getImageUrl = (imagePath) => {
-    if (!imagePath) return "/img/shop01.png";
+    if (!imagePath) return "/img/shop01.svg";
     if (imagePath.startsWith("http")) return imagePath;
-    return `http://127.0.0.1:9000${imagePath}`;
+    const apiUrl = getApiUrl();
+    return `${apiUrl}${imagePath}`;
   };
 
   const getProductLink = (product) => {
     if (product.slug) {
       return `/product/${product.slug}`;
     }
-    // Si pas de slug, utiliser le nom du produit pour créer un lien
-    return `/product/${product.name?.toLowerCase().replace(/\s+/g, '-')}` || '/products';
+    if (product.id) {
+      return `/product/${product.id}`;
+    }
+    return '/';
   };
 
   const formatNumber = (num) => {
@@ -217,7 +223,7 @@ const FlashPromo = () => {
                 alt={featuredProduct.name}
                 className={styles.promoImage}
                 onError={(e) => {
-                  e.target.src = "/img/shop01.png";
+                  e.target.src = "/img/shop01.svg";
                 }}
               />
             </div>

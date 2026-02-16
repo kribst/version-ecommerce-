@@ -39,7 +39,7 @@
 /* ========== CONTAINER ========== */
 .carouselContainer {
     min-height: 380px;
-    background: #F8F8F8;
+    background: #f8f8f8;
     padding: 40px 20px !important;
 }
   
@@ -223,4 +223,40 @@
       height: 32px;
       font-size: 11px;
     }
+}
+
+
+
+
+
+
+
+
+.navBtnPromo {
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(241, 235, 235, 0.15);
+  border: 1px solid rgba(241, 235, 235, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  font-size: 12px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+}
+
+.navBtnPromo:hover {
+  background: rgba(255, 255, 255, 1);
+  color: #2B2D42;
+  border-color: rgba(255, 255, 255, 1);
+  transform: scale(1.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.navBtnPromo:active {
+  transform: scale(1.02);
 }

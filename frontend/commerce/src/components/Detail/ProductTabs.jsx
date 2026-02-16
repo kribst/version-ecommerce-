@@ -170,7 +170,7 @@ export default function ProductTabs({ description, productId, productSlug }) {
                     )}
                   </>
                 ) : (
-                  <p>Aucun commentaire pour le moment.</p>
+                  <p className={styles.commen}>Aucun commentaire pour le moment.</p>
                 )}
               </div>
 

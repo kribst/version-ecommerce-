@@ -2,8 +2,8 @@
 
 import React, { useState } from "react";
 import styles from "./Flash.module.css";
-import CompteRebour from "./CompteRebour/CompteRebour";
 import Limite from "./Limite/Limite";
+import FlashPromo from "./CompteRebour/FlashPromo/FlashPromo";
 
 export default function SimpleSection() {
   const [isActive, setIsActive] = useState(false); // prêt pour plus tard 😉
@@ -18,7 +18,7 @@ export default function SimpleSection() {
         <div className={styles.grid}>
           {/* Colonne 2/6 */}
           <div className={styles.colTwo}>
-            <CompteRebour />
+          <FlashPromo />
           </div>
 
           {/* Colonne 4/6 */}

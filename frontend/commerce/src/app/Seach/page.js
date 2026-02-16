@@ -66,7 +66,7 @@ export default function SearchPage() {
         // Transformer les produits au format attendu par ProductCard
         const formattedProducts = (results || []).map((product) => {
           // Construire l'URL de l'image
-          let imageUrl = "/img/shop01.png"; // Image par défaut
+          let imageUrl = "/img/shop01.svg"; // Image par défaut
           if (product.image) {
             imageUrl = product.image.startsWith("http")
               ? product.image
@@ -176,8 +176,11 @@ export default function SearchPage() {
               <p>Aucun produit trouvé pour votre recherche.</p>
             </div>
           ) : (
-            <>
-              <div className={styles.resultsCount}>
+
+            <>              
+               {/* Résultats des produits */}
+              <div className={styles.productsGridContainer}>
+                 <div className={styles.resultsCount}>
                 <p>
                   {pagination.count} produit{pagination.count > 1 ? "s" : ""}{" "}
                   trouvé{pagination.count > 1 ? "s" : ""}
@@ -186,22 +189,23 @@ export default function SearchPage() {
                   )}
                 </p>
               </div>
-              <div className={styles.productsGrid}>
-                {products.map((product) => (
-                  <ProductCard
+                
+                <div className={styles.productsGrid}>
+                  {products.map((product) => (
+                    <ProductCard
                     key={product.id}
-                    product={product}
-                    isInWishlist={isInWishlist(product.id)}
-                    onToggleWishlist={() => toggleWishlist(product)}
-                    isInCart={isInCart(product.id)}
-                    onToggleCart={() => handleToggleCart(product)}
-                  />
-                ))}
-              </div>
-              
-              {/* Pagination */}
+                      product={product}
+                      isInWishlist={isInWishlist(product.id)}
+                      onToggleWishlist={() => toggleWishlist(product)}
+                      isInCart={isInCart(product.id)}
+                      onToggleCart={() => handleToggleCart(product)}
+                    />
+                  ))}
+                </div>
+
+                {/* Pagination */}
               {pagination.total_pages > 1 && (
-                <div className={styles.pagination}>
+                  <div className={styles.pagination}>
                   <button
                     onClick={() => {
                       const params = new URLSearchParams(searchParams.toString());
@@ -229,6 +233,11 @@ export default function SearchPage() {
                   </button>
                 </div>
               )}
+
+              </div>
+              {/* Résultats des produits */}
+
+
             </>
           )}
         </div>

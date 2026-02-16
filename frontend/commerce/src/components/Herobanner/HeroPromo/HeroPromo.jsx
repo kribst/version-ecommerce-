@@ -138,7 +138,7 @@ export default function HeroPromo() {
 
       {/* Contenu */}
       <div className={styles.contentWrapper} style={{ zIndex: 2 }}>
-        <span className="small text-uppercase text-white opacity-75" style={{ letterSpacing: '0.3em', display: 'block', marginBottom: '0.75rem', fontWeight: 600 }}>
+        <span className="small text-uppercase opacity-75" style={{ letterSpacing: '0.3em', display: 'block', marginBottom: '7.5rem', fontWeight: 700, color: '#D10024', fontSize: '20px' }}>
           Promotion
         </span>
 
@@ -157,7 +157,7 @@ export default function HeroPromo() {
 
         <div className="d-flex justify-content-center mb-3">
           <Link
-            href={`/products/${promo.product_slug}`}
+            href={`/product/${promo.product_slug}`}
             className={styles.cartBtn}
           >
             <FaShoppingCart />

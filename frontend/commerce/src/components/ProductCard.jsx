@@ -1,7 +1,8 @@
 "use client";
 
+import React, { useState } from "react";
 import Link from "next/link";
-import { FaHeart } from "react-icons/fa";
+import { FaHeart, FaShoppingCart } from "react-icons/fa";
 import styles from "./ProductCard.module.css";
 
 const ProductCard = ({
@@ -28,13 +29,13 @@ const ProductCard = ({
   return (
     <div className={`${styles.product} group`}>
       {/* IMAGE */}
-      <div className={styles.productImg}>
+      <Link href={productLink} className={styles.productImg}>
         <img
           src={image}
           alt={name}
-          onError={(e) => (e.target.src = "/img/shop01.png")}
+          onError={(e) => (e.target.src = "/img/shop01.svg")}
         />
-
+      
         {/* Wishlist */}
         <button
           className={`${styles.wishlistBtn} ${
@@ -49,12 +50,26 @@ const ProductCard = ({
           <FaHeart />
         </button>
 
+        {/* Cart Button */}
+        <button
+          className={`${styles.cartBtn} ${
+            isInCart ? styles.cartBtnActive : ""
+          }`}
+          onClick={(e) => {
+            e.preventDefault();
+            onToggleCart(product);
+          }}
+          aria-label="cart"
+        >
+          <FaShoppingCart />
+        </button>
+
         {/* Labels */}
         <div className={styles.productLabel}>
           {sale && <span className={styles.sale}>{sale}</span>}
           {isNew && <span className={styles.new}>NEW</span>}
         </div>
-      </div>
+      </Link>
 
       {/* BODY */}
       <div className={styles.productBody}>
@@ -73,18 +88,6 @@ const ProductCard = ({
         <div className={styles.productPrice}>
           {parseInt(price, 10).toLocaleString('fr-FR')} CFA
         </div>
-      </div>
-
-      {/* ADD TO CART */}
-      <div className={styles.addToCart}>
-        <button
-          className={`${styles.addToCartBtn} ${
-            isInCart ? styles.removeFromCartBtn : ""
-          }`}
-          onClick={() => onToggleCart(product)}
-        >
-          {isInCart ? "remove from cart" : "add to cart"}
-        </button>
       </div>
     </div>
   );

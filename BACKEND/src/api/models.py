@@ -123,6 +123,12 @@ class ParametrePage(models.Model):
         default=4,
         help_text=_("Nombre de commentaires à afficher initialement sur la page produit")
     )
+    
+    # Configuration section Boutique
+    boutique_products_per_page = models.PositiveIntegerField(
+        default=24,
+        help_text=_("Nombre de produits à afficher par page dans la boutique")
+    )
 
     # Horodatage
     created_at = models.DateTimeField(auto_now_add=True)
@@ -533,3 +539,153 @@ class FlashProductItem(models.Model):
             return (self.start_date, self.end_date)
         # autres produits : compte à rebours commun du flash
         return self.flash.secondary_countdown
+
+
+# Paiement PayPal & Commandes
+# Paiement PayPal & Commandes
+
+
+class PendingPayPalOrder(models.Model):
+    """
+    Commande PayPal en attente (créée côté serveur avant redirection utilisateur).
+    Permet de lier l'order ID PayPal au panier et de valider la capture côté backend.
+    """
+    STATUS_PENDING = "pending"
+    STATUS_CAPTURED = "captured"
+    STATUS_EXPIRED = "expired"
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "En attente"),
+        (STATUS_CAPTURED, "Capturé"),
+        (STATUS_EXPIRED, "Expiré"),
+    ]
+
+    paypal_order_id = models.CharField(_("ID commande PayPal"), max_length=255, unique=True, db_index=True)
+    cart_snapshot = models.JSONField(
+        _("Snapshot du panier"),
+        help_text="Liste des items: [{id, name, price, quantity}]",
+        default=list,
+    )
+    # Facturation (pour créer la Order à la capture)
+    billing_snapshot = models.JSONField(
+        _("Snapshot facturation"),
+        help_text="{email, first_name, last_name, address, city, country, zip_code, phone}",
+        default=dict,
+        blank=True,
+    )
+    total_cfa = models.PositiveIntegerField(_("Total CFA"), default=0)
+    amount_value = models.DecimalField(
+        _("Montant envoyé à PayPal"),
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        help_text="Montant dans la devise PayPal (ex: EUR)",
+    )
+    currency = models.CharField(_("Devise PayPal"), max_length=3, default="EUR")
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_PENDING,
+        db_index=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = _("Commande PayPal en attente")
+        verbose_name_plural = _("Commandes PayPal en attente")
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Pending PayPal {self.paypal_order_id} ({self.status})"
+
+
+class Order(models.Model):
+    """
+    Commande client (créée après capture réussie du paiement PayPal).
+    """
+    STATUS_PAID = "paid"
+    STATUS_PENDING = "pending"
+    STATUS_REFUNDED = "refunded"
+    STATUS_FAILED = "failed"
+    STATUS_CHOICES = [
+        (STATUS_PAID, "Payée"),
+        (STATUS_PENDING, "En attente"),
+        (STATUS_REFUNDED, "Remboursée"),
+        (STATUS_FAILED, "Échouée"),
+    ]
+
+    PAYMENT_PAYPAL = "paypal"
+    PAYMENT_BANK = "bank"
+    PAYMENT_CHEQUE = "cheque"
+    PAYMENT_CHOICES = [
+        (PAYMENT_PAYPAL, "PayPal"),
+        (PAYMENT_BANK, "Virement bancaire"),
+        (PAYMENT_CHEQUE, "Chèque"),
+    ]
+
+    # Client
+    email = models.EmailField(_("Email"))
+    first_name = models.CharField(_("Prénom"), max_length=100)
+    last_name = models.CharField(_("Nom"), max_length=100)
+    address = models.CharField(_("Adresse"), max_length=255, blank=True)
+    city = models.CharField(_("Ville"), max_length=100, blank=True)
+    country = models.CharField(_("Pays"), max_length=100, blank=True)
+    zip_code = models.CharField(_("Code postal"), max_length=20, blank=True)
+    phone = models.CharField(_("Téléphone"), max_length=50, blank=True)
+
+    total_cfa = models.PositiveIntegerField(_("Total CFA"), default=0)
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_PENDING,
+        db_index=True,
+    )
+    payment_method = models.CharField(
+        max_length=20,
+        choices=PAYMENT_CHOICES,
+        default=PAYMENT_PAYPAL,
+    )
+    paypal_order_id = models.CharField(
+        _("ID commande PayPal"),
+        max_length=255,
+        blank=True,
+        null=True,
+        db_index=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _("Commande")
+        verbose_name_plural = _("Commandes")
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Commande #{self.id} - {self.email} ({self.total_cfa} CFA)"
+
+
+class OrderItem(models.Model):
+    """Ligne de commande (snapshot produit au moment de l'achat)."""
+    order = models.ForeignKey(
+        Order,
+        related_name="items",
+        on_delete=models.CASCADE,
+        verbose_name=_("Commande"),
+    )
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="order_items",
+        verbose_name=_("Produit"),
+    )
+    name = models.CharField(_("Nom produit"), max_length=255)
+    price = models.PositiveIntegerField(_("Prix unitaire CFA"), default=0)
+    quantity = models.PositiveIntegerField(_("Quantité"), default=1)
+
+    class Meta:
+        verbose_name = _("Ligne de commande")
+        verbose_name_plural = _("Lignes de commande")
+
+    def __str__(self):
+        return f"{self.name} x{self.quantity}"

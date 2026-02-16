@@ -27,23 +27,43 @@
   }
   
   /* Liens */
-  .mainNav li a {
-    font-size: 14px;
-    font-weight: 500;
-    color: #2b2d42;
-    text-decoration: none;
-    padding-bottom: 4px;
-    transition: color 0.2s ease;
-  }
-  
-  /* Hover */
-  .mainNav li a:hover {
-    color: #d10024;
-  }
-  
-  /* Lien actif */
-  .active a {
-    color: #d10024;
-    border-bottom: 2px solid #d10024;
-  }
-  
+.mainNav li a {
+  position: relative;
+  font-size: 14px;
+  font-weight: 500;
+  color: #2b2d42;
+  text-decoration: none;
+  padding-bottom: 4px;
+  transition: color 0.2s ease;
+}
+
+.mainNav li a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 2px;
+  background-color: #d10024;
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.25s ease;
+}
+
+/* Hover */
+.mainNav li a:hover {
+  color: #d10024;
+}
+
+.mainNav li a:hover::after {
+  transform: scaleX(1);
+}
+
+/* Lien actif (garde le trait même sans hover) */
+.mainNav li.active a {
+  color: #d10024;
+}
+
+.mainNav li.active a::after {
+  transform: scaleX(1);
+}

@@ -136,7 +136,7 @@
 }
 
 .rating-avg .stars {
-  color: #d10024;
+  color: #f0e00b;
   font-size: 22px;
 }
 
@@ -156,7 +156,7 @@
 }
 
 .rating-line .stars {
-  color: #d10024;
+  color: #f0e00b;
 }
 
 /* ================= PROGRESS BAR ================= */
@@ -169,7 +169,7 @@
 
 .progress div {
   height: 100%;
-  background: linear-gradient(90deg, #d10024, #ff4a4a);
+  background: linear-gradient(90deg, #e9e399, #f0e00b);
 }
 
 /* ================= REVIEWS ================= */
@@ -210,7 +210,7 @@
 }
 
 .review-heading .stars {
-  color: #d10024;
+  color: #f0e00b;
 }
 
 /* ================= PAGINATION ================= */
@@ -272,9 +272,12 @@
 }
 
 .stars-input {
-  color: #d10024;
+  color: #f0e00b;
   font-size: 22px;
 }
+
+
+
 
 /* ================= BUTTON ================= */
 .review-form-box button {

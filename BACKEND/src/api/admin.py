@@ -21,7 +21,7 @@ from datetime import datetime
 from urllib.parse import quote
 
 from decimal import InvalidOperation, Decimal
-from .models import SiteSettings, Category, Product, ProductImage, ProductCarousel, ProductPromotion, ParametrePage, Commentaire
+from .models import SiteSettings, Category, Product, ProductImage, ProductCarousel, ProductPromotion, ParametrePage, Commentaire, Order, OrderItem, PendingPayPalOrder
 
 
 
@@ -130,7 +130,7 @@ class SiteSettingsAdmin(admin.ModelAdmin):
 @admin.register(ParametrePage)
 class ParametrePageAdmin(admin.ModelAdmin):
     # Affichage rapide dans la liste
-    list_display = ("new_products_category_limit", "new_products_per_category_limit", "commentaires_per_page", "updated_at")
+    list_display = ("new_products_category_limit", "new_products_per_category_limit", "commentaires_per_page", "boutique_products_per_page", "updated_at")
     list_display_links = ("new_products_category_limit",)
 
     # Empêche l'ajout de plusieurs instances (singleton)
@@ -150,6 +150,10 @@ class ParametrePageAdmin(admin.ModelAdmin):
         ("Section Commentaires", {
             "fields": ("commentaires_per_page",),
             "description": "Contrôle du nombre de commentaires affichés initialement sur la page produit.",
+        }),
+        ("Section Boutique", {
+            "fields": ("boutique_products_per_page",),
+            "description": "Contrôle du nombre de produits affichés par page dans la boutique.",
         }),
         ("Horodatage", {
             "fields": ("created_at", "updated_at"),
@@ -2013,8 +2017,64 @@ class CommentaireAdmin(admin.ModelAdmin):
         self.message_user(request, f'{updated} commentaire(s) rejeté(s).')
     reject_commentaires.short_description = "Rejeter les commentaires sélectionnés"
     
-    def flag_commentaires(self, request, queryset):
+    def     flag_commentaires(self, request, queryset):
         """Signaler les commentaires sélectionnés"""
         updated = queryset.update(is_flagged=True, is_approved=False)
         self.message_user(request, f'{updated} commentaire(s) signalé(s).')
     flag_commentaires.short_description = "Signaler les commentaires sélectionnés"
+
+
+# Commandes & PayPal
+# Commandes & PayPal
+
+class OrderItemInline(admin.TabularInline):
+    model = OrderItem
+    extra = 0
+    readonly_fields = ("name", "price", "quantity")
+
+
+@admin.register(Order)
+class OrderAdmin(admin.ModelAdmin):
+    list_display = ("id", "email", "first_name", "last_name", "total_cfa", "status", "payment_method", "created_at")
+    list_filter = ("status", "payment_method", "created_at")
+    search_fields = ("email", "first_name", "last_name", "paypal_order_id", "address", "city", "country", "phone")
+    readonly_fields = ("created_at", "updated_at", "paypal_order_id")
+    inlines = [OrderItemInline]
+    ordering = ("-created_at",)
+    fieldsets = (
+        ("Adresse de facturation", {
+            "fields": ("first_name", "last_name", "email", "address", "city", "country", "zip_code", "phone"),
+            "description": "Coordonnées du client (identiques au formulaire Checkout).",
+        }),
+        ("Commande", {
+            "fields": ("total_cfa", "status", "payment_method", "paypal_order_id"),
+        }),
+        ("Dates", {
+            "fields": ("created_at", "updated_at"),
+            "classes": ("collapse",),
+        }),
+    )
+
+
+@admin.register(PendingPayPalOrder)
+class PendingPayPalOrderAdmin(admin.ModelAdmin):
+    list_display = ("paypal_order_id", "total_cfa", "currency", "status", "created_at")
+    list_filter = ("status", "currency")
+    search_fields = ("paypal_order_id",)
+    readonly_fields = ("paypal_order_id", "cart_snapshot", "billing_snapshot", "total_cfa", "amount_value", "currency", "created_at")
+    ordering = ("-created_at",)
+    fieldsets = (
+        ("Commande PayPal", {
+            "fields": ("paypal_order_id", "status", "total_cfa", "amount_value", "currency"),
+        }),
+        ("Adresse de facturation (snapshot)", {
+            "fields": ("billing_snapshot",),
+            "description": "Données envoyées depuis le formulaire Checkout (prénom, nom, email, adresse, ville, pays, code postal, téléphone).",
+        }),
+        ("Panier (snapshot)", {
+            "fields": ("cart_snapshot",),
+        }),
+        ("Dates", {
+            "fields": ("created_at",),
+        }),
+    )

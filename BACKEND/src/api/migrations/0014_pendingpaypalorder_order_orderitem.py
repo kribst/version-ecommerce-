@@ -1,0 +1,72 @@
+# Generated manually for PayPal & Orders
+
+from django.db import migrations, models
+import django.db.models.deletion
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('api', '0013_parametrepage_boutique_products_per_page'),
+    ]
+
+    operations = [
+        migrations.CreateModel(
+            name='PendingPayPalOrder',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('paypal_order_id', models.CharField(db_index=True, max_length=255, unique=True, verbose_name='ID commande PayPal')),
+                ('cart_snapshot', models.JSONField(default=list, help_text='Liste des items: [{id, name, price, quantity}]', verbose_name='Snapshot du panier')),
+                ('total_cfa', models.PositiveIntegerField(default=0, verbose_name='Total CFA')),
+                ('amount_value', models.DecimalField(decimal_places=2, default=0, help_text='Montant dans la devise PayPal (ex: EUR)', max_digits=12, verbose_name='Montant envoyé à PayPal')),
+                ('currency', models.CharField(default='EUR', max_length=3, verbose_name='Devise PayPal')),
+                ('status', models.CharField(choices=[('pending', 'En attente'), ('captured', 'Capturé'), ('expired', 'Expiré')], db_index=True, default='pending', max_length=20)),
+                ('created_at', models.DateTimeField(auto_now_add=True)),
+            ],
+            options={
+                'verbose_name': 'Commande PayPal en attente',
+                'verbose_name_plural': 'Commandes PayPal en attente',
+                'ordering': ['-created_at'],
+            },
+        ),
+        migrations.CreateModel(
+            name='Order',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('email', models.EmailField(max_length=254, verbose_name='Email')),
+                ('first_name', models.CharField(max_length=100, verbose_name='Prénom')),
+                ('last_name', models.CharField(max_length=100, verbose_name='Nom')),
+                ('address', models.CharField(blank=True, max_length=255, verbose_name='Adresse')),
+                ('city', models.CharField(blank=True, max_length=100, verbose_name='Ville')),
+                ('country', models.CharField(blank=True, max_length=100, verbose_name='Pays')),
+                ('zip_code', models.CharField(blank=True, max_length=20, verbose_name='Code postal')),
+                ('phone', models.CharField(blank=True, max_length=50, verbose_name='Téléphone')),
+                ('total_cfa', models.PositiveIntegerField(default=0, verbose_name='Total CFA')),
+                ('status', models.CharField(choices=[('paid', 'Payée'), ('pending', 'En attente'), ('refunded', 'Remboursée'), ('failed', 'Échouée')], db_index=True, default='pending', max_length=20)),
+                ('payment_method', models.CharField(choices=[('paypal', 'PayPal'), ('bank', 'Virement bancaire'), ('cheque', 'Chèque')], default='paypal', max_length=20)),
+                ('paypal_order_id', models.CharField(blank=True, db_index=True, max_length=255, null=True, verbose_name='ID commande PayPal')),
+                ('created_at', models.DateTimeField(auto_now_add=True)),
+                ('updated_at', models.DateTimeField(auto_now=True)),
+            ],
+            options={
+                'verbose_name': 'Commande',
+                'verbose_name_plural': 'Commandes',
+                'ordering': ['-created_at'],
+            },
+        ),
+        migrations.CreateModel(
+            name='OrderItem',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('name', models.CharField(max_length=255, verbose_name='Nom produit')),
+                ('price', models.PositiveIntegerField(default=0, verbose_name='Prix unitaire CFA')),
+                ('quantity', models.PositiveIntegerField(default=1, verbose_name='Quantité')),
+                ('order', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='items', to='api.order', verbose_name='Commande')),
+                ('product', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='order_items', to='api.product', verbose_name='Produit')),
+            ],
+            options={
+                'verbose_name': 'Ligne de commande',
+                'verbose_name_plural': 'Lignes de commande',
+            },
+        ),
+    ]

@@ -28,7 +28,7 @@ export default function Limite() {
         if (secondaryRes.data && Array.isArray(secondaryRes.data)) {
           const secondaryProducts = secondaryRes.data.map((product, index) => {
             // Construire l'URL de l'image
-            let imageUrl = '/img/shop01.png';
+            let imageUrl = '/img/shop01.svg';
             if (product.product_image) {
               imageUrl = product.product_image.startsWith('http')
                 ? product.product_image

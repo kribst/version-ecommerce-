@@ -14,9 +14,32 @@
   background-repeat: no-repeat;
   background-position: right 15px center;
   padding-right: 30px;
-  min-width: 180px;
-  max-width: 220px;
 }
+
+
+/* Desktop (par défaut) */
+.inputSelect {
+  width: 200px;
+}
+
+/* Tablettes */
+@media (max-width: 992px) {
+  .inputSelect {
+    width: 180px;
+  }
+}
+
+/* Mobiles */
+@media (max-width: 576px) {
+  .inputSelect {
+    width: 100%;
+    min-width: unset;
+    max-width: unset;
+  }
+}
+
+
+
 
 
 .inputSelect:focus,

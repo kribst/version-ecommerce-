@@ -52,7 +52,7 @@ const NewProductsSection = () => {
           // Mapper les produits au format attendu
           productsMap[category.id] = (categoryData.products || []).map((product) => {
             // Construire l'URL de l'image
-            let imageUrl = '/img/shop01.png'; // Image par défaut
+            let imageUrl = '/img/shop01.svg'; // Image par défaut
             if (product.image) {
               imageUrl = product.image.startsWith('http')
                 ? product.image
@@ -219,7 +219,6 @@ const NewProductsSection = () => {
             </div>
           </div>
         </div>
-      </div>
 
 {/* Bouton aligné à droite */}
 <div className={styles.visitBtnWrapper}>
@@ -229,7 +228,7 @@ const NewProductsSection = () => {
 </div>
 
 
-
+      </div>
     </section>
   );
 };

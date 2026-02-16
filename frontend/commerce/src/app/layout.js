@@ -4,17 +4,14 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import { SiteSettingsProvider } from "../context/SiteSettingsContext";
 import { WishlistProvider } from "../context/WishlistContext";
 import { CartProvider } from "../context/CartContext";
+import { getApiUrl } from "../utils/api";
 
 // Fonction serveur pour précharger les settings avec gestion d'erreur
 async function fetchSiteSettings() {
   try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    
-    // Si l'URL de l'API n'est pas définie, retourner des valeurs par défaut
-    if (!apiUrl) {
-      console.warn("NEXT_PUBLIC_API_URL n'est pas défini");
-      return null;
-    }
+    // Utiliser la fonction getApiUrl pour obtenir l'URL de l'API
+    // Cela fonctionne aussi bien sur PC que sur mobile
+    const apiUrl = getApiUrl();
 
     // Ajouter un timeout pour éviter que l'application reste bloquée
     const controller = new AbortController();
@@ -57,8 +54,8 @@ export async function generateMetadata() {
   try {
     const settings = await fetchSiteSettings();
     
-    // NEXT_PUBLIC_API_URL doit être défini dans les variables d'environnement (production et développement)
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    // Utiliser la fonction getApiUrl pour obtenir l'URL de l'API
+    const apiUrl = getApiUrl();
     
     const metadata = {
       title: settings?.company_name || "Mon App",

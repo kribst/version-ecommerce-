@@ -113,6 +113,8 @@ const Detail = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedImage, setSelectedImage] = useState(0);
+  const [mousePosition, setMousePosition] = useState({ x: 50, y: 50 });
+  const [isHovering, setIsHovering] = useState(false);
   const { toggleWishlist, isInWishlist } = useWishlist();
   const { addToCart, removeFromCart, isInCart } = useCart();
 
@@ -134,7 +136,7 @@ const Detail = () => {
         const productData = response.data;
 
         // Construire l'URL de l'image principale avec dimensions
-        let imageUrl = "/img/shop01.png";
+        let imageUrl = "/img/shop01.svg";
         if (productData.image) {
           imageUrl = productData.image.startsWith("http")
             ? productData.image
@@ -208,6 +210,24 @@ const Detail = () => {
     }
   };
 
+  const handleMouseMove = (e) => {
+    const container = e.currentTarget;
+    const rect = container.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    setMousePosition({ x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) });
+  };
+
+  const handleMouseEnter = () => {
+    setIsHovering(true);
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovering(false);
+    // Réinitialiser au centre quand on quitte
+    setMousePosition({ x: 50, y: 50 });
+  };
+
   if (loading) {
     return (
       <div className={styles.container}>
@@ -245,7 +265,12 @@ const Detail = () => {
       <div className={styles.productDetail}>
         {/* Images Section */}
         <div className={styles.imagesSection}>
-          <div className={styles.mainImage}>
+          <div 
+            className={styles.mainImage}
+            onMouseMove={handleMouseMove}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+          >
             <img
               src={
                 typeof product.allImages[selectedImage] === "object"
@@ -259,8 +284,10 @@ const Detail = () => {
                 width: `${MAIN_IMAGE_WIDTH}px`,
                 height: `${MAIN_IMAGE_HEIGHT}px`,
                 objectFit: "contain",
+                transformOrigin: `${mousePosition.x}% ${mousePosition.y}%`,
+                transform: isHovering ? "scale(1.5)" : "scale(1)",
               }}
-              onError={(e) => (e.target.src = "/img/shop01.png")}
+              onError={(e) => (e.target.src = "/img/shop01.svg")}
             />
           </div>
           {product.allImages.length > 1 && (
@@ -286,7 +313,7 @@ const Detail = () => {
                         height: `${THUMBNAIL_HEIGHT}px`,
                         objectFit: "cover",
                       }}
-                      onError={(e) => (e.target.src = "/img/shop01.png")}
+                      onError={(e) => (e.target.src = "/img/shop01.svg")}
                     />
                   </div>
                 );

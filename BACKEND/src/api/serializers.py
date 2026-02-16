@@ -195,6 +195,7 @@ class ParametrePageSerializer(serializers.ModelSerializer):
             'new_products_category_limit',
             'new_products_per_category_limit',
             'commentaires_per_page',
+            'boutique_products_per_page',
             'created_at',
             'updated_at',
         ]
@@ -259,8 +260,58 @@ from django.utils import timezone
 from .models import FlashProductItem
 from datetime import timedelta
 
+
+def compute_product_pricing(product):
+    """
+    Calcule le prix final et le prix de comparaison en tenant compte :
+    - du produit lui‑même
+    - d'une éventuelle promotion (ProductPromotion)
+    - d'un éventuel flash principal (FlashProductItem is_main=True)
+    """
+    from .models import ProductFlash, ProductPromotion  # import local pour éviter les cycles
+
+    # Valeurs de base
+    base_price = product.price or 0
+    original_price = product.compare_at_price or base_price
+    final_price = base_price
+
+    now = timezone.now()
+
+    # 1) Flash principal (prioritaire)
+    flash_item = FlashProductItem.objects.filter(
+        product=product,
+        is_main=True,
+        flash__is_active=True,
+    ).select_related("flash").first()
+
+    if flash_item and flash_item.flash:
+        start = flash_item.start_date
+        end = flash_item.end_date
+
+        if (not start or start <= now) and (not end or end >= now):
+            # Dans MainFlashProductSerializer, compare_at_price est utilisé comme prix promo
+            if flash_item.compare_at_price:
+                final_price = flash_item.compare_at_price
+                original_price = base_price
+                return final_price, original_price
+
+    # 2) Promotion standard
+    promo = getattr(product, "promotion", None)
+    if promo and promo.is_active and promo.promo_price:
+        start = promo.start_date
+        end = promo.end_date
+
+        if (not start or start <= now) and (not end or end >= now):
+            final_price = promo.promo_price
+            original_price = base_price
+
+    return final_price, original_price
+
+
 class MainFlashProductSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source="product.name", read_only=True)
+    product_id = serializers.IntegerField(source="product.id", read_only=True)
+    product_slug = serializers.CharField(source="product.slug", read_only=True)
 
     # Prix en entier
     product_price = serializers.IntegerField(source="product.price", read_only=True)
@@ -278,6 +329,8 @@ class MainFlashProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = FlashProductItem
         fields = [
+            "product_id",
+            "product_slug",
             "product_name",
             "product_price",
             "compare_at_price",
@@ -338,6 +391,8 @@ class SecondaryFlashProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
+            "id",
+            "slug",
             "product_name",
             "product_price",
             "product_image",
@@ -390,6 +445,105 @@ class ProductSearchSerializer(serializers.ModelSerializer):
     Serializer pour les résultats de recherche de produits.
     """
     image = serializers.SerializerMethodField()
+    price = serializers.SerializerMethodField()
+    compare_at_price = serializers.SerializerMethodField()
+    category = serializers.SerializerMethodField()
+    category_slug = serializers.SerializerMethodField()
+    price = serializers.SerializerMethodField()
+    compare_at_price = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = [
+            'id',
+            'name',
+            'slug',
+            'price',
+            'compare_at_price',
+            'image',
+            'image_url',
+            'category',
+            'category_slug',
+            'description',
+            'shot_description',
+        ]
+
+    def get_image(self, obj):
+        return obj.image_display_url
+
+    def get_price(self, obj):
+        final_price, _ = compute_product_pricing(obj)
+        return final_price
+
+    def get_compare_at_price(self, obj):
+        _, original_price = compute_product_pricing(obj)
+        return original_price
+
+    def get_category(self, obj):
+        return obj.category.name if obj.category else None
+
+    def get_category_slug(self, obj):
+        return obj.category.slug if obj.category else None
+
+    # Même logique de prix que pour le détail produit (flash / promo / prix normal)
+    def _get_pricing(self, obj):
+        from django.utils import timezone
+
+        base_price = obj.price or 0
+        original_price = obj.compare_at_price or base_price
+        final_price = base_price
+
+        now = timezone.now()
+
+        # 1) Flash principal prioritaire
+        flash_item = FlashProductItem.objects.filter(
+            product=obj,
+            is_main=True,
+            flash__is_active=True,
+        ).select_related("flash").first()
+
+        if flash_item and flash_item.flash:
+            start = flash_item.start_date
+            end = flash_item.end_date
+
+            if (not start or start <= now) and (not end or end >= now):
+                if flash_item.compare_at_price:
+                    final_price = flash_item.compare_at_price
+                    original_price = base_price
+                    return final_price, original_price
+
+        # 2) Promotion standard
+        promo = getattr(obj, "promotion", None)
+        if promo and promo.is_active and promo.promo_price:
+            start = promo.start_date
+            end = promo.end_date
+
+            if (not start or start <= now) and (not end or end >= now):
+                final_price = promo.promo_price
+                original_price = base_price
+
+        return final_price, original_price
+
+    def get_price(self, obj):
+        final_price, _ = self._get_pricing(obj)
+        return final_price
+
+    def get_compare_at_price(self, obj):
+        _, original_price = self._get_pricing(obj)
+        return original_price
+
+
+# Boutique
+# Boutique
+
+class BoutiqueProductSerializer(serializers.ModelSerializer):
+    """
+    Serializer pour les produits de la boutique.
+    Similaire à ProductSearchSerializer mais optimisé pour la boutique.
+    """
+    image = serializers.SerializerMethodField()
+    price = serializers.SerializerMethodField()
+    compare_at_price = serializers.SerializerMethodField()
     category = serializers.SerializerMethodField()
     category_slug = serializers.SerializerMethodField()
 
@@ -412,6 +566,14 @@ class ProductSearchSerializer(serializers.ModelSerializer):
     def get_image(self, obj):
         return obj.image_display_url
 
+    def get_price(self, obj):
+        final_price, _ = compute_product_pricing(obj)
+        return final_price
+
+    def get_compare_at_price(self, obj):
+        _, original_price = compute_product_pricing(obj)
+        return original_price
+
     def get_category(self, obj):
         return obj.category.name if obj.category else None
 
@@ -427,6 +589,8 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     Serializer pour les détails complets d'un produit.
     """
     image = serializers.SerializerMethodField()
+    price = serializers.SerializerMethodField()
+    compare_at_price = serializers.SerializerMethodField()
     category = serializers.SerializerMethodField()
     category_slug = serializers.SerializerMethodField()
     images = serializers.SerializerMethodField()
@@ -455,6 +619,14 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     def get_image(self, obj):
         """Retourne l'image principale du produit"""
         return obj.image_display_url
+
+    def get_price(self, obj):
+        final_price, _ = compute_product_pricing(obj)
+        return final_price
+
+    def get_compare_at_price(self, obj):
+        _, original_price = compute_product_pricing(obj)
+        return original_price
 
     def get_category(self, obj):
         """Retourne le nom de la catégorie"""

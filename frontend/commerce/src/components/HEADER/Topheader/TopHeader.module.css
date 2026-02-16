@@ -44,3 +44,65 @@
     display: flex;
   }
   
+
+
+/* =========================
+   Desktop (par défaut)
+========================= */
+
+.container {
+  display: flex;
+  justify-content: space-between;
+}
+
+.pullLeft,
+.pullRight {
+  display: flex;
+}
+
+.headerLinks li {
+  font-size: 12px;
+  margin-right: 15px;
+}
+
+/* =========================
+   Tablettes
+========================= */
+
+@media (max-width: 992px) {
+  .container {
+    padding-left: 15px;
+    padding-right: 15px;
+  }
+
+  .headerLinks li {
+    font-size: 11px;
+    margin-right: 10px;
+  }
+}
+
+
+/* =========================
+   Mobiles
+========================= */
+
+@media (max-width: 576px) {
+  .container {
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .pullLeft,
+  .pullRight {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .headerLinks li {
+    font-size: 10px;
+    margin-right: 8px;
+  }
+}
+
+

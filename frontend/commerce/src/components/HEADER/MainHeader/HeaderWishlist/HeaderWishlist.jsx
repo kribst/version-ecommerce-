@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { FaHeart, FaTimes, FaArrowCircleRight } from "react-icons/fa";
 import { useWishlist } from "../../../../context/WishlistContext";
 import styles from "./HeaderWishlist.module.css";
@@ -37,7 +38,7 @@ const HeaderWishlist = () => {
             wishlist.map((item) => (
               <div className={styles.productWidget} key={item.id}>
                 <div className={styles.productImg}>
-                  <img src={item.image || "/img/shop01.png"} alt={item.name} />
+                  <img src={item.image || "/img/shop01.svg"} alt={item.name} />
                 </div>
 
                 <div className={styles.productBody}>
@@ -69,7 +70,7 @@ const HeaderWishlist = () => {
             </div>
 
             <div className={styles.wishlistBtns}>
-              <a href="/wishlist">Voir la Wishlist</a>
+              <Link href="/wishlist">Voir la Wishlist</Link>
             </div>
           </>
         )}

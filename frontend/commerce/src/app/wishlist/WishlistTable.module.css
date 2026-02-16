@@ -1,0 +1,257 @@
+/* =======================
+   SECTION GLOBALE
+======================= */
+.wishlistSection {
+  padding: 60px;
+  background-color: #f5f7fb;
+}
+
+/* =======================
+   TABLE WRAPPER
+======================= */
+.tableWrapper {
+  overflow-x: auto;
+  background: #ffffff;
+  border: 1px solid #e4e7ed;
+  border-radius: 12px;
+}
+
+/* =======================
+   TABLE
+======================= */
+.wishlistTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  table-layout: fixed;
+}
+
+/* =======================
+   HEADER
+======================= */
+.wishlistTable thead {
+  background-color: #f9fafb;
+}
+
+.wishlistTable th {
+  padding: 10px 8px;
+  text-align: center;
+  font-weight: 600;
+  border-bottom: 1px solid #e4e7ed;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* =======================
+   BODY
+======================= */
+.wishlistTable td {
+  padding: 8px;
+  text-align: center;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: middle;
+  overflow: hidden;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+/* =======================
+   COLONNES
+======================= */
+.productCell {
+  width: 300px;
+  text-align: left;
+}
+
+.imageCell {
+  width: 120px;
+}
+
+.priceCell {
+  width: 150px;
+}
+
+.statusCell {
+  width: 150px;
+}
+
+.actionCell {
+  width: 200px;
+}
+
+/* =======================
+   PRODUIT
+======================= */
+.productNameLink {
+  display: block;
+  max-width: 100%;
+  color: #2b2d42;
+  font-weight: 500;
+  font-size: 14px;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.3s ease, transform 0.3s ease;
+}
+
+.productNameLink:hover {
+  color: #d10024;
+  transform: scale(1.02);
+}
+
+/* =======================
+   IMAGE
+======================= */
+.imageWrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.productImage {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  transition: transform 0.3s ease;
+}
+
+/* =======================
+   PRIX
+======================= */
+.priceValue {
+  font-weight: 500;
+  font-size: 14px;
+  transition: color 0.3s ease, transform 0.3s ease;
+}
+
+/* =======================
+   STATUT
+======================= */
+.inCartBadge {
+  display: inline-block;
+  padding: 4px 12px;
+  background-color: #d4edda;
+  color: #155724;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.notInCartBadge {
+  display: inline-block;
+  padding: 4px 12px;
+  background-color: #f8f9fa;
+  color: #6c757d;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* =======================
+   ACTIONS
+======================= */
+.actionButtons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.addToCartBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #d10024;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.3s ease, transform 0.3s ease;
+}
+
+.addToCartBtn:hover:not(:disabled) {
+  background: #b0001f;
+  transform: scale(1.05);
+}
+
+.addToCartBtn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.removeBtn {
+  background: none;
+  border: none;
+  color: #d10024;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 6px;
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.removeBtn:hover {
+  transform: scale(1.3) rotate(5deg);
+  color: #b0001f;
+}
+
+/* =======================
+   WISHLIST VIDE
+======================= */
+.emptyWishlist {
+  text-align: center;
+  padding: 40px 0;
+}
+
+.emptyWishlist p {
+  font-size: 18px;
+  color: #6c757d;
+  margin-bottom: 20px;
+}
+
+.continueShoppingBtn {
+  margin-top: 12px;
+  display: inline-block;
+  background: #d10024;
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.3s ease, transform 0.3s ease;
+}
+
+.continueShoppingBtn:hover {
+  background: #b0001f;
+  transform: scale(1.05);
+}
+
+/* =======================
+   ANIMATION SUR LA LIGNE
+======================= */
+.wishlistTable tbody tr {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.wishlistTable tbody tr:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.wishlistTable tbody tr:hover td {
+  transform: translateY(-2px);
+  opacity: 0.95;
+}
+
+.wishlistTable tbody tr:hover .priceValue {
+  color: #d10024;
+  transform: scale(1.05);
+}
+
+.wishlistTable tbody tr:hover .productImage {
+  transform: scale(1.1);
+}

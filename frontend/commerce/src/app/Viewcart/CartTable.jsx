@@ -92,7 +92,7 @@ export default function CartTable() {
                   <td className={styles.imageCell}>
                     <div className={styles.imageWrapper}>
                       <img
-                        src={item.image || "/img/shop01.png"}
+                        src={item.image || "/img/shop01.svg"}
                         alt={item.name}
                         className={styles.productImage}
                       />

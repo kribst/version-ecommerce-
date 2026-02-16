@@ -1,0 +1,4 @@
+# Ne pas commiter les identifiants (PayPal, etc.)
+.env
+.env.local
+.env.*.local
