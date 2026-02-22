@@ -92,7 +92,7 @@ export default function HeroPromo() {
 
   if (error || promos.length === 0) {
     return (
-      <div className={`d-flex align-items-center justify-content-center ${styles.promoContainer}`} style={{ background: '#F5F5F5' }}>
+      <div className={`d-flex align-items-center justify-content-center ${styles.promoContainer}`}>
         <div className="text-white small px-3 text-center">
           Aucune promotion en vedette pour le moment.
         </div>
@@ -103,7 +103,7 @@ export default function HeroPromo() {
   const promo = promos[current];
 
   return (
-    <div className={`position-relative w-100 h-100 ${styles.promoContainer}`} style={{ background: '#F5F5F5' }}>
+    <div className={`position-relative w-100 h-100 ${styles.promoContainer}`}>
       {/* Image produit */}
       <img
         src={promo.product_image}

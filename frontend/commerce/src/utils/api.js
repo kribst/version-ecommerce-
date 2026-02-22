@@ -118,4 +118,65 @@ export const paypalAPI = {
   },
 };
 
+// MTN Mobile Money API (pour le Cameroun)
+export const mtnMoMoAPI = {
+  // Créer une demande de paiement MTN MoMo
+  requestPayment: async (payload) => {
+    try {
+      const response = await api.post("/api/mtn-momo/request-payment/", payload);
+      return response.data;
+    } catch (error) {
+      console.error("Erreur lors de la création de la demande de paiement MTN MoMo:", error);
+      throw error;
+    }
+  },
+
+  // Vérifier le statut d'un paiement MTN MoMo
+  checkPaymentStatus: async (transactionId) => {
+    try {
+      const response = await api.get(`/api/mtn-momo/payment-status/${transactionId}/`);
+      return response.data;
+    } catch (error) {
+      console.error("Erreur lors de la vérification du statut du paiement:", error);
+      throw error;
+    }
+  },
+
+  // Annuler une transaction en attente
+  cancelPayment: async (transactionId) => {
+    try {
+      const response = await api.post(`/api/mtn-momo/cancel-payment/`, { transactionId });
+      return response.data;
+    } catch (error) {
+      console.error("Erreur lors de l'annulation du paiement:", error);
+      throw error;
+    }
+  },
+};
+
+// Orange Money API (pour le Cameroun)
+export const orangeMoneyAPI = {
+  // Créer une demande de paiement Orange Money
+  requestPayment: async (payload) => {
+    try {
+      const response = await api.post("/api/orange-money/request-payment/", payload);
+      return response.data;
+    } catch (error) {
+      console.error("Erreur lors de la création de la demande de paiement Orange Money:", error);
+      throw error;
+    }
+  },
+
+  // Vérifier le statut d'un paiement Orange Money
+  checkPaymentStatus: async (transactionId) => {
+    try {
+      const response = await api.get(`/api/orange-money/payment-status/${transactionId}/`);
+      return response.data;
+    } catch (error) {
+      console.error("Erreur lors de la vérification du statut du paiement:", error);
+      throw error;
+    }
+  },
+};
+
 export default api;

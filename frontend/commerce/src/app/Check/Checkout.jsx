@@ -1,14 +1,33 @@
  "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { paypalAPI } from "@/utils/api";
+import { mtnMoMoAPI } from "@/utils/api";
+import { orangeMoneyAPI } from "@/utils/api";
+import MTNPaymentModal from "@/components/MTNPaymentModal/MTNPaymentModal";
 import styles from "./Checkout.module.css";
 
 const PAYMENT_BANK = "bank";
 const PAYMENT_CHEQUE = "cheque";
 const PAYMENT_PAYPAL = "paypal";
+
+// Statuts de paiement MTN MoMo
+const MTN_STATUS = {
+  PENDING: "pending",
+  SUCCESS: "success",
+  FAILED: "failed",
+  CANCELLED: "cancelled",
+};
+
+// Statuts de paiement Orange Money
+const ORANGE_STATUS = {
+  PENDING: "pending",
+  SUCCESS: "success",
+  FAILED: "failed",
+  CANCELLED: "cancelled",
+};
 
 export default function Checkout() {
   const { cart, cartTotal, clearCart } = useCart();
@@ -19,6 +38,20 @@ export default function Checkout() {
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [paypalReturnProcessed, setPaypalReturnProcessed] = useState(false);
+  
+  // États pour MTN Mobile Money
+  const [mtnModalOpen, setMtnModalOpen] = useState(false);
+  const [mtnPaymentStatus, setMtnPaymentStatus] = useState(MTN_STATUS.PENDING);
+  const [mtnTransactionId, setMtnTransactionId] = useState(null);
+  const [mtnErrorMessage, setMtnErrorMessage] = useState("");
+  const pollingIntervalRef = useRef(null);
+  
+  // États pour Orange Money
+  const [orangeModalOpen, setOrangeModalOpen] = useState(false);
+  const [orangePaymentStatus, setOrangePaymentStatus] = useState(ORANGE_STATUS.PENDING);
+  const [orangeTransactionId, setOrangeTransactionId] = useState(null);
+  const [orangeErrorMessage, setOrangeErrorMessage] = useState("");
+  const orangePollingIntervalRef = useRef(null);
 
   const [billing, setBilling] = useState({
     first_name: "",
@@ -34,6 +67,211 @@ export default function Checkout() {
   const updateBilling = (field, value) => {
     setBilling((prev) => ({ ...prev, [field]: value }));
   };
+
+  // Validation du numéro de téléphone Orange Cameroun
+  const validateOrangePhone = (phone) => {
+    if (!phone) return { valid: false, message: "Le numéro de téléphone est requis." };
+    
+    // Nettoyer le numéro (supprimer espaces, tirets, etc.)
+    const cleaned = phone.replace(/\D/g, "");
+    
+    // Formats acceptés:
+    // - +237 6XX XXX XXX ou 9XX XXX XXX (Orange)
+    // - 237 6XX XXX XXX ou 9XX XXX XXX
+    // - 6XX XXX XXX ou 9XX XXX XXX
+    
+    let phoneNumber = cleaned;
+    
+    // Si commence par 237, le garder
+    if (cleaned.startsWith("237")) {
+      phoneNumber = cleaned;
+    } else if ((cleaned.startsWith("6") || cleaned.startsWith("9")) && cleaned.length === 9) {
+      // Format local: 6XX XXX XXX ou 9XX XXX XXX -> ajouter 237
+      phoneNumber = "237" + cleaned;
+    } else {
+      return {
+        valid: false,
+        message: "Format invalide. Utilisez: +237 6XX XXX XXX ou 9XX XXX XXX",
+      };
+    }
+    
+    // Vérifier que c'est un numéro Orange valide (237 + 9 chiffres, commençant par 6 ou 9)
+    if (phoneNumber.length !== 12 || (!phoneNumber.startsWith("2376") && !phoneNumber.startsWith("2379"))) {
+      return {
+        valid: false,
+        message: "Le numéro doit être un numéro Orange valide (237 6XX XXX XXX ou 9XX XXX XXX).",
+      };
+    }
+    
+    return { valid: true, phoneNumber };
+  };
+
+  // Validation du numéro de téléphone MTN Cameroun
+  const validateMTNPhone = (phone) => {
+    if (!phone) return { valid: false, message: "Le numéro de téléphone est requis." };
+    
+    // Nettoyer le numéro (supprimer espaces, tirets, etc.)
+    const cleaned = phone.replace(/\D/g, "");
+    
+    // Formats acceptés:
+    // - +237 6XX XXX XXX
+    // - 237 6XX XXX XXX
+    // - 6XX XXX XXX
+    // - 6XXXXXXXXX
+    
+    let phoneNumber = cleaned;
+    
+    // Si commence par 237, le garder
+    if (cleaned.startsWith("237")) {
+      phoneNumber = cleaned;
+    } else if (cleaned.startsWith("6") && cleaned.length === 9) {
+      // Format local: 6XX XXX XXX -> ajouter 237
+      phoneNumber = "237" + cleaned;
+    } else {
+      return {
+        valid: false,
+        message: "Format invalide. Utilisez: +237 6XX XXX XXX ou 6XX XXX XXX",
+      };
+    }
+    
+    // Vérifier que c'est un numéro MTN valide (237 + 9 chiffres, commençant par 6)
+    if (phoneNumber.length !== 12 || !phoneNumber.startsWith("2376")) {
+      return {
+        valid: false,
+        message: "Le numéro doit être un numéro MTN valide (237 6XX XXX XXX).",
+      };
+    }
+    
+    return { valid: true, phoneNumber };
+  };
+
+  // Nettoyer l'intervalle de polling
+  const clearPolling = useCallback(() => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+  }, []);
+
+  // Nettoyer l'intervalle de polling Orange
+  const clearOrangePolling = useCallback(() => {
+    if (orangePollingIntervalRef.current) {
+      clearInterval(orangePollingIntervalRef.current);
+      orangePollingIntervalRef.current = null;
+    }
+  }, []);
+
+  // Vérifier le statut du paiement MTN MoMo
+  const checkMTNPaymentStatus = useCallback(async (transactionId) => {
+    try {
+      const data = await mtnMoMoAPI.checkPaymentStatus(transactionId);
+      
+      if (data?.status === "SUCCESSFUL" || data?.status === "success") {
+        setMtnPaymentStatus(MTN_STATUS.SUCCESS);
+        clearPolling();
+        clearCart();
+        // Rediriger vers la page de succès après un court délai
+        setTimeout(() => {
+          setMtnModalOpen(false);
+          router.push("/PaymentSuccess");
+        }, 2000);
+      } else if (data?.status === "FAILED" || data?.status === "failed") {
+        setMtnPaymentStatus(MTN_STATUS.FAILED);
+        setMtnErrorMessage(data?.message || "Le paiement a échoué.");
+        clearPolling();
+      } else if (data?.status === "CANCELLED" || data?.status === "cancelled") {
+        setMtnPaymentStatus(MTN_STATUS.CANCELLED);
+        clearPolling();
+      }
+      // Si PENDING, continuer le polling
+    } catch (err) {
+      console.error("Erreur lors de la vérification du statut:", err);
+      // Ne pas arrêter le polling en cas d'erreur réseau temporaire
+    }
+  }, [clearPolling, clearCart, router]);
+
+  // Démarrer le polling pour vérifier le statut
+  const startPolling = useCallback((transactionId) => {
+    // Vérifier immédiatement
+    checkMTNPaymentStatus(transactionId);
+    
+    // Puis vérifier toutes les 3 secondes
+    pollingIntervalRef.current = setInterval(() => {
+      checkMTNPaymentStatus(transactionId);
+    }, 3000);
+    
+    // Arrêter après 5 minutes maximum
+    setTimeout(() => {
+      clearPolling();
+      if (mtnPaymentStatus === MTN_STATUS.PENDING) {
+        setMtnPaymentStatus(MTN_STATUS.FAILED);
+        setMtnErrorMessage("Le délai d'attente a expiré. Veuillez réessayer.");
+      }
+    }, 300000); // 5 minutes
+  }, [checkMTNPaymentStatus, clearPolling, mtnPaymentStatus]);
+
+  // Nettoyer le polling au démontage
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      if (orangePollingIntervalRef.current) {
+        clearInterval(orangePollingIntervalRef.current);
+        orangePollingIntervalRef.current = null;
+      }
+    };
+  }, []);
+
+  // Vérifier le statut du paiement Orange Money
+  const checkOrangePaymentStatus = useCallback(async (transactionId) => {
+    try {
+      const data = await orangeMoneyAPI.checkPaymentStatus(transactionId);
+      
+      if (data?.status === "SUCCESSFUL" || data?.status === "success") {
+        setOrangePaymentStatus(ORANGE_STATUS.SUCCESS);
+        clearOrangePolling();
+        clearCart();
+        // Rediriger vers la page de succès après un court délai
+        setTimeout(() => {
+          setOrangeModalOpen(false);
+          router.push("/PaymentSuccess");
+        }, 2000);
+      } else if (data?.status === "FAILED" || data?.status === "failed") {
+        setOrangePaymentStatus(ORANGE_STATUS.FAILED);
+        setOrangeErrorMessage(data?.message || "Le paiement a échoué.");
+        clearOrangePolling();
+      } else if (data?.status === "CANCELLED" || data?.status === "cancelled") {
+        setOrangePaymentStatus(ORANGE_STATUS.CANCELLED);
+        clearOrangePolling();
+      }
+      // Si PENDING, continuer le polling
+    } catch (err) {
+      console.error("Erreur lors de la vérification du statut:", err);
+      // Ne pas arrêter le polling en cas d'erreur réseau temporaire
+    }
+  }, [clearOrangePolling, clearCart, router]);
+
+  // Démarrer le polling pour vérifier le statut Orange
+  const startOrangePolling = useCallback((transactionId) => {
+    // Vérifier immédiatement
+    checkOrangePaymentStatus(transactionId);
+    
+    // Puis vérifier toutes les 3 secondes
+    orangePollingIntervalRef.current = setInterval(() => {
+      checkOrangePaymentStatus(transactionId);
+    }, 3000);
+    
+    // Arrêter après 5 minutes maximum
+    setTimeout(() => {
+      clearOrangePolling();
+      if (orangePaymentStatus === ORANGE_STATUS.PENDING) {
+        setOrangePaymentStatus(ORANGE_STATUS.FAILED);
+        setOrangeErrorMessage("Le délai d'attente a expiré. Veuillez réessayer.");
+      }
+    }, 300000); // 5 minutes
+  }, [checkOrangePaymentStatus, clearOrangePolling, orangePaymentStatus]);
 
   const formatPrice = (num) => {
     const value = typeof num === "number" ? num : Number(num || 0);
@@ -211,8 +449,173 @@ export default function Checkout() {
       return;
     }
 
-    if (paymentMethod === PAYMENT_BANK || paymentMethod === PAYMENT_CHEQUE) {
-      setError("Ce mode de paiement n'est pas encore disponible. Veuillez choisir PayPal.");
+    // Paiement Orange Money
+    if (paymentMethod === PAYMENT_BANK) {
+      // Validation des champs obligatoires
+      const requiredFields = [
+        { key: "first_name", label: "Prénom" },
+        { key: "last_name", label: "Nom" },
+        { key: "email", label: "Email" },
+        { key: "phone", label: "Téléphone Orange" },
+      ];
+
+      const missing = requiredFields.filter(
+        ({ key }) => !billing[key] || !billing[key].toString().trim()
+      );
+
+      if (missing.length > 0) {
+        const fieldLabels = missing.map((f) => f.label).join(", ");
+        setError(`Veuillez renseigner tous les champs obligatoires : ${fieldLabels}.`);
+        return;
+      }
+
+      // Validation du numéro de téléphone Orange
+      const phoneValidation = validateOrangePhone(billing.phone);
+      if (!phoneValidation.valid) {
+        setError(phoneValidation.message);
+        return;
+      }
+
+      setPlacing(true);
+      setError("");
+      
+      try {
+        const payload = {
+          cart: cart.map((item) => ({
+            id: item.id,
+            name: item.name || "",
+            price: Number(item.price) || 0,
+            quantity: Number(item.quantity) || 1,
+          })),
+          billing: {
+            email: billing.email.trim(),
+            first_name: billing.first_name.trim(),
+            last_name: billing.last_name.trim(),
+            address: billing.address.trim(),
+            city: billing.city.trim(),
+            country: billing.country.trim() || "Cameroun",
+            zip_code: billing.zip_code.trim(),
+            phone: phoneValidation.phoneNumber, // Numéro formaté
+          },
+          amount: Math.round(cartTotal),
+          currency: "XAF",
+        };
+
+        // Vérification de sécurité
+        if (!orangeMoneyAPI || typeof orangeMoneyAPI.requestPayment !== 'function') {
+          setError("Le service de paiement Orange Money n'est pas disponible. Veuillez réessayer plus tard.");
+          setPlacing(false);
+          return;
+        }
+
+        const data = await orangeMoneyAPI.requestPayment(payload);
+        
+        if (data?.success && data?.transactionId) {
+          setOrangeTransactionId(data.transactionId);
+          setOrangePaymentStatus(ORANGE_STATUS.PENDING);
+          setOrangeErrorMessage("");
+          setOrangeModalOpen(true);
+          setPlacing(false);
+          
+          // Démarrer le polling pour vérifier le statut
+          startOrangePolling(data.transactionId);
+        } else {
+          setError(data?.message || "Impossible d'initier le paiement Orange Money. Réessayez.");
+          setPlacing(false);
+        }
+      } catch (err) {
+        const detail = err.response?.data?.detail;
+        const msg = typeof detail === "string"
+          ? detail
+          : err.response?.data?.message || err.message || "Erreur lors de la création du paiement Orange Money.";
+        setError(msg);
+        setPlacing(false);
+      }
+      return;
+    }
+
+    // Paiement MTN Mobile Money
+    if (paymentMethod === PAYMENT_CHEQUE) {
+      // Validation des champs obligatoires
+      const requiredFields = [
+        { key: "first_name", label: "Prénom" },
+        { key: "last_name", label: "Nom" },
+        { key: "email", label: "Email" },
+        { key: "phone", label: "Téléphone MTN" },
+      ];
+
+      const missing = requiredFields.filter(
+        ({ key }) => !billing[key] || !billing[key].toString().trim()
+      );
+
+      if (missing.length > 0) {
+        const fieldLabels = missing.map((f) => f.label).join(", ");
+        setError(`Veuillez renseigner tous les champs obligatoires : ${fieldLabels}.`);
+        return;
+      }
+
+      // Validation du numéro de téléphone MTN
+      const phoneValidation = validateMTNPhone(billing.phone);
+      if (!phoneValidation.valid) {
+        setError(phoneValidation.message);
+        return;
+      }
+
+      setPlacing(true);
+      setError("");
+      
+      try {
+        const payload = {
+          cart: cart.map((item) => ({
+            id: item.id,
+            name: item.name || "",
+            price: Number(item.price) || 0,
+            quantity: Number(item.quantity) || 1,
+          })),
+          billing: {
+            email: billing.email.trim(),
+            first_name: billing.first_name.trim(),
+            last_name: billing.last_name.trim(),
+            address: billing.address.trim(),
+            city: billing.city.trim(),
+            country: billing.country.trim() || "Cameroun",
+            zip_code: billing.zip_code.trim(),
+            phone: phoneValidation.phoneNumber, // Numéro formaté
+          },
+          amount: Math.round(cartTotal),
+          currency: "XAF",
+        };
+
+        // Vérification de sécurité
+        if (!mtnMoMoAPI || typeof mtnMoMoAPI.requestPayment !== 'function') {
+          setError("Le service de paiement MTN Mobile Money n'est pas disponible. Veuillez réessayer plus tard.");
+          setPlacing(false);
+          return;
+        }
+
+        const data = await mtnMoMoAPI.requestPayment(payload);
+        
+        if (data?.success && data?.transactionId) {
+          setMtnTransactionId(data.transactionId);
+          setMtnPaymentStatus(MTN_STATUS.PENDING);
+          setMtnErrorMessage("");
+          setMtnModalOpen(true);
+          setPlacing(false);
+          
+          // Démarrer le polling pour vérifier le statut
+          startPolling(data.transactionId);
+        } else {
+          setError(data?.message || "Impossible d'initier le paiement MTN Mobile Money. Réessayez.");
+          setPlacing(false);
+        }
+      } catch (err) {
+        const detail = err.response?.data?.detail;
+        const msg = typeof detail === "string"
+          ? detail
+          : err.response?.data?.message || err.message || "Erreur lors de la création du paiement MTN Mobile Money.";
+        setError(msg);
+        setPlacing(false);
+      }
       return;
     }
   };
@@ -351,7 +754,7 @@ export default function Checkout() {
                   checked={paymentMethod === PAYMENT_BANK}
                   onChange={() => setPaymentMethod(PAYMENT_BANK)}
                 />
-                Carte Visa
+                ORANGE Money
               </label>
               <label>
                 <input
@@ -360,7 +763,7 @@ export default function Checkout() {
                   checked={paymentMethod === PAYMENT_CHEQUE}
                   onChange={() => setPaymentMethod(PAYMENT_CHEQUE)}
                 />
-                Paiement par chèque
+                MTN Mobile Money
               </label>
               <label>
                 <input
@@ -372,8 +775,11 @@ export default function Checkout() {
                 PayPal, Carte bancaire (Visa / MasterCard) via PayPal sécurisé
               </label>
               <p className={styles.paymentHint}>
-                Vos paiements par carte sont traités de manière sécurisée sur la page PayPal.
-                Aucune donnée de carte bancaire n'est stockée sur notre site.
+                {paymentMethod === PAYMENT_CHEQUE
+                  ? "Paiement sécurisé via MTN Mobile Money. Un message de confirmation sera envoyé sur votre téléphone."
+                  : paymentMethod === PAYMENT_BANK
+                  ? "Paiement sécurisé via Orange Money. Un message de confirmation sera envoyé sur votre téléphone."
+                  : "Vos paiements par carte sont traités de manière sécurisée sur la page PayPal. Aucune donnée de carte bancaire n'est stockée sur notre site."}
               </p>
             </div>
 
@@ -392,11 +798,81 @@ export default function Checkout() {
               onClick={handlePlaceOrder}
               disabled={placing}
             >
-              {placing ? "Redirection..." : "Passer la commande"}
+              {placing
+                ? paymentMethod === PAYMENT_CHEQUE || paymentMethod === PAYMENT_BANK
+                  ? "Initialisation du paiement..."
+                  : "Redirection..."
+                : "Passer la commande"}
             </button>
           </div>
         </div>
       </div>
+
+      {/* Modal MTN Mobile Money */}
+      <MTNPaymentModal
+        isOpen={mtnModalOpen}
+        onClose={() => {
+          if (mtnPaymentStatus === MTN_STATUS.SUCCESS) {
+            setMtnModalOpen(false);
+            router.push("/PaymentSuccess");
+          } else if (mtnPaymentStatus === MTN_STATUS.PENDING) {
+            // Demander confirmation avant de fermer
+            if (window.confirm("Le paiement est en cours. Êtes-vous sûr de vouloir fermer ?")) {
+              clearPolling();
+              setMtnModalOpen(false);
+            }
+          } else {
+            setMtnModalOpen(false);
+          }
+        }}
+        phoneNumber={billing.phone}
+        amount={cartTotal}
+        status={mtnPaymentStatus}
+        transactionId={mtnTransactionId}
+        errorMessage={mtnErrorMessage}
+        onRetry={() => {
+          setMtnPaymentStatus(MTN_STATUS.PENDING);
+          setMtnErrorMessage("");
+          if (mtnTransactionId) {
+            startPolling(mtnTransactionId);
+          } else {
+            handlePlaceOrder();
+          }
+        }}
+      />
+
+      {/* Modal Orange Money */}
+      <MTNPaymentModal
+        isOpen={orangeModalOpen}
+        onClose={() => {
+          if (orangePaymentStatus === ORANGE_STATUS.SUCCESS) {
+            setOrangeModalOpen(false);
+            router.push("/PaymentSuccess");
+          } else if (orangePaymentStatus === ORANGE_STATUS.PENDING) {
+            // Demander confirmation avant de fermer
+            if (window.confirm("Le paiement est en cours. Êtes-vous sûr de vouloir fermer ?")) {
+              clearOrangePolling();
+              setOrangeModalOpen(false);
+            }
+          } else {
+            setOrangeModalOpen(false);
+          }
+        }}
+        phoneNumber={billing.phone}
+        amount={cartTotal}
+        status={orangePaymentStatus}
+        transactionId={orangeTransactionId}
+        errorMessage={orangeErrorMessage}
+        onRetry={() => {
+          setOrangePaymentStatus(ORANGE_STATUS.PENDING);
+          setOrangeErrorMessage("");
+          if (orangeTransactionId) {
+            startOrangePolling(orangeTransactionId);
+          } else {
+            handlePlaceOrder();
+          }
+        }}
+      />
     </div>
   );
 }

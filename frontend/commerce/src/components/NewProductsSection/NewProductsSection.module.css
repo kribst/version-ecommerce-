@@ -9,7 +9,17 @@
 .section {
   padding-top: 4rem;
   padding-bottom: 4rem;
-  background-color: #E4E7ED;
+  background:
+  linear-gradient(
+    135deg,
+    rgba(233, 30, 99, 0.7),
+    rgba(229, 177, 209, 0.7)
+  ),
+  url("/image-carousel/Capture d’écran 2026-02-20 221245.png");
+
+background-size: cover;
+background-position: center;
+background-repeat: no-repeat;
 }
 
 /* -------- Container -------- */
@@ -77,7 +87,7 @@
   padding: 0.75rem 1.25rem 0.5rem;
   font-size: 0.9375rem;
   font-weight: 500;
-  color: #2B2D42;
+  color: #ffffff;
   background: none;
   border: none;
   cursor: pointer;
@@ -304,16 +314,32 @@
 }
 
 .visitBtn {
-  background-color: #D10024;
-  color: #ffffff;
-  padding: 12px 26px;
-  border-radius: 6px;
+  background: #d10081;
+  color: white;
+  border: none;
+  padding: 8px 22px;
+  border-radius: 25px;
+  cursor: pointer;
+  font-size: 14px;
   font-weight: 600;
   text-decoration: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 3px 10px rgba(209, 0, 36, 0.25);
+  letter-spacing: 0.5px;
+  display: inline-block;
 }
 
 .visitBtn:hover {
-  background-color: #B8001F;
+  background: #800852;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px #800852;
+  color: white;
+  text-decoration: none;
+}
+
+.visitBtn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(209, 0, 36, 0.25);
 }
 
 /* ===============================
@@ -345,8 +371,8 @@
 .tabNavLink {
   padding: 0.5rem 0;
   font-size: 0.95rem;
-  font-weight: 500;
-  color: #8D99AE;
+  font-weight: 700;
+  color: #2b2d42;
   background: none;
   border: none;
   cursor: pointer;
@@ -356,7 +382,7 @@
 
 /* Hover texte */
 .tabNavLink:hover {
-  color: #D10024;
+  color: #d10081;
 }
 
 /* Barre rouge (invisible par défaut) */
@@ -368,7 +394,7 @@
   transform: translateX(-50%);
   width: 0;
   height: 2px;
-  background-color: #D10024;
+  background-color: #800852;
   transition: width 0.3s ease;
 }
 
@@ -379,7 +405,7 @@
 
 /* Catégorie active */
 .tabNavItem.active .tabNavLink {
-  color: #D10024;
+  color: #faf2f3;
   font-weight: 600;
 }
 

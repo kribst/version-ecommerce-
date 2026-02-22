@@ -19,6 +19,11 @@ from .views import (
     CategoryProductsViewSet,
     CreatePayPalOrderView,
     CapturePayPalOrderView,
+    RequestMTNPaymentView,
+    CheckMTNPaymentStatusView,
+    RequestOrangePaymentView,
+    CheckOrangePaymentStatusView,
+    MaSelectionViewSet,
 )
 
 router = DefaultRouter()
@@ -38,9 +43,14 @@ router.register(r'category-products', CategoryProductsViewSet, basename='categor
 router.register(r'products', ProductDetailViewSet, basename='product-detail')
 router.register(r'commentaires', CommentaireViewSet, basename='commentaire')
 router.register(r'product-commentaires', ProductCommentairesViewSet, basename='product-commentaires')
+router.register(r'ma-selection', MaSelectionViewSet, basename='ma-selection')
 
 urlpatterns = [
     path("", include(router.urls)),
     path("paypal/create-order/", CreatePayPalOrderView.as_view(), name="paypal-create-order"),
     path("paypal/capture-order/", CapturePayPalOrderView.as_view(), name="paypal-capture-order"),
+    path("mtn-momo/request-payment/", RequestMTNPaymentView.as_view(), name="mtn-momo-request-payment"),
+    path("mtn-momo/payment-status/<str:transaction_id>/", CheckMTNPaymentStatusView.as_view(), name="mtn-momo-payment-status"),
+    path("orange-money/request-payment/", RequestOrangePaymentView.as_view(), name="orange-money-request-payment"),
+    path("orange-money/payment-status/<str:transaction_id>/", CheckOrangePaymentStatusView.as_view(), name="orange-money-payment-status"),
 ]

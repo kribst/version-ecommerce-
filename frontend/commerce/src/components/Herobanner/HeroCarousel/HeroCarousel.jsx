@@ -195,18 +195,18 @@ export default function HeroCarousel() {
             {slide.title}
           </h1>
 
-          <p className="small text-secondary mb-3 mb-md-4">
+          <p className={`small mb-3 mb-md-4 ${styles.description}`}>
             {slide.description}
           </p>
 
           {slide.price && (
-            <p className="h5 fw-bold text-danger mb-3 mb-md-4">
-              {slide.price.toLocaleString('fr-FR')} FCFA
+            <p className="h5 fw-bold text-warning mb-3 mb-md-4">
+              {slide.price.toLocaleString('fr-FR')} CFA
             </p>
           )}
           
           <button className={styles.shopBtn} onClick={handleShopNow}>
-            Shop Now
+          Achetez dès maintenant
           </button>
         </div>
       </div>

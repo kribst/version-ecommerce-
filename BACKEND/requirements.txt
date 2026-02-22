@@ -1,0 +1,8 @@
+# Django
+Django>=5.2
+djangorestframework
+django-cors-headers
+
+# Suppression d'arrière-plan pour le carousel (images produits)
+rembg>=2.0.50
+Pillow>=10.0.0

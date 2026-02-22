@@ -1,7 +1,7 @@
 #topHeader {
     padding-top: 10px;
     padding-bottom: 10px;
-    background-color: #1e1f29;
+    background-color: #3d0829;
   }
   
   .container {
@@ -33,7 +33,7 @@
   }
   
   .headerLinks li a:hover {
-    color: #d10024;
+    color: #800852;
   }
   
   .pullLeft {

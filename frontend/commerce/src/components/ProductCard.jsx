@@ -85,8 +85,10 @@ const ProductCard = ({
           </del>
         )}
 
-        <div className={styles.productPrice}>
-          {parseInt(price, 10).toLocaleString('fr-FR')} CFA
+        <div>
+        <span className={styles.productPrice}>{parseInt(price, 10).toLocaleString('fr-FR')} </span>
+        <span className={styles.productPriceCFA}>CFA</span>
+           
         </div>
       </div>
     </div>

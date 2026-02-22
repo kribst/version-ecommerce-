@@ -45,10 +45,10 @@
   flex: 1;
   padding: 0 20px;
   border: none;
-  background-color: #FFF;
+  background-color: #e5b1d1;
   margin-right: -4px;
   font-size: 14px;
-  color: #2B2D42;
+  color: white;
   outline: none;
 }
 
@@ -60,7 +60,7 @@
   height: 40px;
   min-width: 100px;
   padding: 0 25px;
-  background: #D10024;
+  background: #d10081;
   color: #FFF;
   font-weight: 700;
   font-size: 14px;
@@ -71,7 +71,7 @@
 }
 
 .searchBtn:hover {
-  background: #b8001f;
+  background: #800852;
 }
 
 @media (max-width: 768px) {

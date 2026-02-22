@@ -42,9 +42,13 @@ const HeaderWishlist = () => {
                 </div>
 
                 <div className={styles.productBody}>
-                  <h3 className={styles.productName}>
-                    <a href={`/product/${item.slug || item.id}`}>{item.name}</a>
-                  </h3>
+                <h3 className={styles.productName}>
+                  <a href={`/product/${item.slug || item.id}`}>
+                    {item.name.length > 30
+                      ? item.name.substring(0, 50) + "..."
+                      : item.name}
+                  </a>
+                </h3>
                   <h4 className={styles.productPrice}>
                     {formatCFA(item.price)} CFA
                   </h4>

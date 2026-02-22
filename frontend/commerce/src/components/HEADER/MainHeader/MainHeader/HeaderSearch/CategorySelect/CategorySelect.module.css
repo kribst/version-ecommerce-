@@ -2,10 +2,11 @@
   height: 40px;
   padding: 0 20px;
   border: none;
-  color: #333;
-  background: #f8f8f8;
+  color: #ffffff;
+  background: #d10081;
   border-radius: 8px 0 0 1px;
   margin-right: -2px;
+  font-weight: 700;
   font-size: 14px;
   cursor: pointer;
   outline: none;
@@ -48,21 +49,21 @@
   outline: none !important;
   border: none !important;
   box-shadow: none !important;
-  background-color: #f0f0f0;
+  background-color: #d363a8;
 }
 
 /* Style des options du dropdown */
 .inputSelect option {
-  background: #fff;
+  background: #c274a4;
   color: #333;
   padding: 12px 20px;
   font-size: 14px;
-  font-weight: 400;
-  border: none;
+  font-weight: 700;
 }
 
 .inputSelect option:hover,
 .inputSelect option:checked {
-  background: #007bff;
-  color: #fff;
+  background: #800852;
+  color: #d8d3d3;
+  
 }

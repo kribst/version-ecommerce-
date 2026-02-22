@@ -9,6 +9,7 @@ from .models import (
     ProductFlash,
     FlashProductItem,
     Commentaire,
+    MaSelection,
 )
 
 
@@ -108,16 +109,26 @@ class ProductCarouselSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at']
 
     def get_product_image(self, obj):
-        """Retourne l'image principale du produit, ou la première, ou l'image par défaut (image ou image_url)"""
+        """
+        Retourne l'image principale du produit SANS arrière-plan pour le carousel.
+        L'image originale n'est jamais modifiée. Les versions sans fond sont mises en cache.
+        Pour les images externes (image_url), retourne l'URL telle quelle.
+        """
+        from api.services.background_removal import get_carousel_image_no_background
+
         primary_image = obj.product.images.filter(is_primary=True).first()
-        if primary_image:
-            return primary_image.image.url
+        if primary_image and primary_image.image:
+            return get_carousel_image_no_background(primary_image.image)
 
         first_image = obj.product.images.first()
-        if first_image:
-            return first_image.image.url
+        if first_image and first_image.image:
+            return get_carousel_image_no_background(first_image.image)
 
-        # Utilise image_display_url qui gère image ET image_url
+        # Produit.image (ImageField local)
+        if obj.product.image:
+            return get_carousel_image_no_background(obj.product.image)
+
+        # image_url externe : pas de suppression de fond, retourne l'URL telle quelle
         return obj.product.image_display_url
 
 
@@ -734,3 +745,48 @@ class ProductCommentairesSummarySerializer(serializers.Serializer):
     average_rating = serializers.FloatField()
     rating_distribution = serializers.DictField()
     commentaires = CommentaireSerializer(many=True)
+
+
+# Ma Selection
+# Ma Selection
+
+class MaSelectionProductSerializer(serializers.ModelSerializer):
+    """
+    Serializer pour les produits dans Ma Selection.
+    Retourne uniquement l'image, le nom, la description courte et le prix.
+    """
+    image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = [
+            'id',
+            'name',
+            'slug',
+            'image',
+            'shot_description',
+            'price',
+        ]
+
+    def get_image(self, obj):
+        """Retourne l'URL de l'image du produit"""
+        return obj.image_display_url
+
+
+class MaSelectionSerializer(serializers.ModelSerializer):
+    """
+    Serializer pour Ma Selection.
+    """
+    products = MaSelectionProductSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = MaSelection
+        fields = [
+            'id',
+            'title',
+            'is_active',
+            'products',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['created_at', 'updated_at']

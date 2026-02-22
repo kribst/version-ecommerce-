@@ -211,6 +211,13 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Carousel : suppression d'arrière-plan des images produits (rembg)
+# Variable d'environnement : CAROUSEL_REMOVE_BACKGROUND (true/false)
+# Production : activé par défaut. Mettre à false pour désactiver (CPU/mémoire limités)
+CAROUSEL_REMOVE_BACKGROUND = os.environ.get(
+    "CAROUSEL_REMOVE_BACKGROUND", "true"
+).strip().lower() in ("true", "1", "yes")
+
 # PayPal (paiement géré côté backend uniquement)
 # Définir dans l'environnement : PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET
 # Optionnel : PAYPAL_MODE=sandbox|live, PAYPAL_CURRENCY=EUR, PAYPAL_CFA_TO_EUR=655.957

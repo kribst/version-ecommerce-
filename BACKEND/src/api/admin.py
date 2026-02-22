@@ -21,7 +21,7 @@ from datetime import datetime
 from urllib.parse import quote
 
 from decimal import InvalidOperation, Decimal
-from .models import SiteSettings, Category, Product, ProductImage, ProductCarousel, ProductPromotion, ParametrePage, Commentaire, Order, OrderItem, PendingPayPalOrder
+from .models import SiteSettings, Category, Product, ProductImage, ProductCarousel, ProductPromotion, ParametrePage, Commentaire, Order, OrderItem, PendingPayPalOrder, PendingMTNMoMoOrder, PendingOrangeMoneyOrder
 
 
 
@@ -173,6 +173,65 @@ class ParametrePageAdmin(admin.ModelAdmin):
 
 # FIN Paramètres de page
 # FIN Paramètres de page
+
+
+# Ma Selection
+# Ma Selection
+
+from .models import MaSelection
+
+@admin.register(MaSelection)
+class MaSelectionAdmin(admin.ModelAdmin):
+    # Affichage rapide dans la liste
+    list_display = ("title", "is_active", "products_count", "updated_at")
+    list_display_links = ("title",)
+    
+    # Filtres
+    list_filter = ("is_active", "created_at", "updated_at")
+    
+    # Empêche l'ajout de plusieurs instances (singleton)
+    def has_add_permission(self, request):
+        return not MaSelection.objects.exists()
+    
+    # Empêche la suppression
+    def has_delete_permission(self, request, obj=None):
+        return False
+    
+    # Organisation en sections
+    fieldsets = (
+        ("Configuration générale", {
+            "fields": ("title", "is_active"),
+            "description": "Configurez le titre et l'état d'activation de la section Ma Selection.",
+        }),
+        ("Produits", {
+            "fields": ("products",),
+            "description": "Sélectionnez les produits à afficher dans cette section. Vous pouvez sélectionner plusieurs produits.",
+        }),
+        ("Horodatage", {
+            "fields": ("created_at", "updated_at"),
+            "classes": ("collapse",),
+        }),
+    )
+    
+    # Champs en lecture seule
+    readonly_fields = ("created_at", "updated_at")
+    
+    # Utiliser filter_horizontal pour une meilleure interface de sélection
+    filter_horizontal = ("products",)
+    
+    # Méthode pour afficher le nombre de produits
+    def products_count(self, obj):
+        if obj.pk:
+            return obj.products.count()
+        return 0
+    products_count.short_description = "Nombre de produits"
+    
+    # Tri par défaut
+    ordering = ("-updated_at",)
+
+
+# FIN Ma Selection
+# FIN Ma Selection
 
 
 # Informations générales sur les produits
@@ -2076,5 +2135,61 @@ class PendingPayPalOrderAdmin(admin.ModelAdmin):
         }),
         ("Dates", {
             "fields": ("created_at",),
+        }),
+    )
+
+
+@admin.register(PendingMTNMoMoOrder)
+class PendingMTNMoMoOrderAdmin(admin.ModelAdmin):
+    list_display = ("transaction_id", "phone_number", "total_cfa", "currency", "status", "created_at")
+    list_filter = ("status", "currency")
+    search_fields = ("transaction_id", "phone_number")
+    readonly_fields = ("transaction_id", "cart_snapshot", "billing_snapshot", "total_cfa", "amount", "currency", "phone_number", "mtn_response", "created_at", "updated_at")
+    ordering = ("-created_at",)
+    fieldsets = (
+        ("Commande MTN Mobile Money", {
+            "fields": ("transaction_id", "status", "phone_number", "total_cfa", "amount", "currency"),
+        }),
+        ("Adresse de facturation (snapshot)", {
+            "fields": ("billing_snapshot",),
+            "description": "Données envoyées depuis le formulaire Checkout (prénom, nom, email, adresse, ville, pays, code postal, téléphone).",
+        }),
+        ("Panier (snapshot)", {
+            "fields": ("cart_snapshot",),
+        }),
+        ("Réponse MTN MoMo", {
+            "fields": ("mtn_response",),
+            "description": "Réponse complète de l'API MTN Mobile Money.",
+        }),
+        ("Dates", {
+            "fields": ("created_at", "updated_at"),
+        }),
+    )
+
+
+@admin.register(PendingOrangeMoneyOrder)
+class PendingOrangeMoneyOrderAdmin(admin.ModelAdmin):
+    list_display = ("transaction_id", "phone_number", "total_cfa", "currency", "status", "created_at")
+    list_filter = ("status", "currency")
+    search_fields = ("transaction_id", "phone_number")
+    readonly_fields = ("transaction_id", "cart_snapshot", "billing_snapshot", "total_cfa", "amount", "currency", "phone_number", "orange_response", "created_at", "updated_at")
+    ordering = ("-created_at",)
+    fieldsets = (
+        ("Commande Orange Money", {
+            "fields": ("transaction_id", "status", "phone_number", "total_cfa", "amount", "currency"),
+        }),
+        ("Adresse de facturation (snapshot)", {
+            "fields": ("billing_snapshot",),
+            "description": "Données envoyées depuis le formulaire Checkout (prénom, nom, email, adresse, ville, pays, code postal, téléphone).",
+        }),
+        ("Panier (snapshot)", {
+            "fields": ("cart_snapshot",),
+        }),
+        ("Réponse Orange Money", {
+            "fields": ("orange_response",),
+            "description": "Réponse complète de l'API Orange Money.",
+        }),
+        ("Dates", {
+            "fields": ("created_at", "updated_at"),
         }),
     )

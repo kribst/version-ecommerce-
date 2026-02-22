@@ -167,6 +167,67 @@ class ParametrePage(models.Model):
 # Fin Paramètres de page
 
 
+# Ma Selection
+# Ma Selection
+
+class MaSelection(models.Model):
+    """
+    Modèle pour la section Ma Selection (singleton).
+    Permet à l'utilisateur de définir manuellement les produits à afficher.
+    """
+    title = models.CharField(
+        max_length=200,
+        default="Ma Selection",
+        help_text=_("Titre de la section Ma Selection")
+    )
+    products = models.ManyToManyField(
+        'Product',
+        related_name='ma_selections',
+        blank=True,
+        help_text=_("Sélectionnez les produits à afficher dans cette section")
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text=_("Activez cette section pour l'afficher sur le site")
+    )
+    
+    # Horodatage
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _("Ma Selection")
+        verbose_name_plural = _("Ma Selection")
+
+    def __str__(self):
+        return f"Ma Selection - {self.title}"
+
+    def clean(self):
+        """
+        Empêche la création d'une deuxième instance (singleton).
+        """
+        if not self.pk and MaSelection.objects.exists():
+            raise ValidationError(
+                _("Il existe déjà une instance de Ma Selection. "
+                  "Modifiez l'instance existante au lieu d'en créer une nouvelle.")
+            )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()  # force la validation singleton
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        """
+        Retourne l'instance existante si elle existe.
+        """
+        return cls.objects.first()
+
+
+# Fin Ma Selection
+# Fin Ma Selection
+
+
 # Informations générales sur les produits
 # Informations générales sur les produits
 
@@ -598,6 +659,142 @@ class PendingPayPalOrder(models.Model):
         return f"Pending PayPal {self.paypal_order_id} ({self.status})"
 
 
+class PendingMTNMoMoOrder(models.Model):
+    """
+    Commande MTN Mobile Money en attente (créée côté serveur lors de la demande de paiement).
+    Permet de suivre le statut du paiement MTN MoMo et de créer la commande finale.
+    """
+    STATUS_PENDING = "pending"
+    STATUS_SUCCESSFUL = "successful"
+    STATUS_FAILED = "failed"
+    STATUS_CANCELLED = "cancelled"
+    STATUS_EXPIRED = "expired"
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "En attente"),
+        (STATUS_SUCCESSFUL, "Réussi"),
+        (STATUS_FAILED, "Échoué"),
+        (STATUS_CANCELLED, "Annulé"),
+        (STATUS_EXPIRED, "Expiré"),
+    ]
+
+    transaction_id = models.CharField(
+        _("ID transaction MTN MoMo"), 
+        max_length=255, 
+        unique=True, 
+        db_index=True
+    )
+    cart_snapshot = models.JSONField(
+        _("Snapshot du panier"),
+        help_text="Liste des items: [{id, name, price, quantity}]",
+        default=list,
+    )
+    # Facturation (pour créer la Order à la confirmation)
+    billing_snapshot = models.JSONField(
+        _("Snapshot facturation"),
+        help_text="{email, first_name, last_name, address, city, country, zip_code, phone}",
+        default=dict,
+        blank=True,
+    )
+    total_cfa = models.PositiveIntegerField(_("Total CFA"), default=0)
+    amount = models.PositiveIntegerField(_("Montant XAF"), default=0)
+    currency = models.CharField(_("Devise"), max_length=3, default="XAF")
+    phone_number = models.CharField(
+        _("Numéro de téléphone MTN"), 
+        max_length=20,
+        help_text="Numéro au format 237XXXXXXXXX"
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_PENDING,
+        db_index=True,
+    )
+    mtn_response = models.JSONField(
+        _("Réponse MTN MoMo"),
+        help_text="Réponse complète de l'API MTN MoMo",
+        default=dict,
+        blank=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _("Commande MTN Mobile Money en attente")
+        verbose_name_plural = _("Commandes MTN Mobile Money en attente")
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Pending MTN MoMo {self.transaction_id} ({self.status})"
+
+
+class PendingOrangeMoneyOrder(models.Model):
+    """
+    Commande Orange Money en attente (créée côté serveur lors de la demande de paiement).
+    Permet de suivre le statut du paiement Orange Money et de créer la commande finale.
+    """
+    STATUS_PENDING = "pending"
+    STATUS_SUCCESSFUL = "successful"
+    STATUS_FAILED = "failed"
+    STATUS_CANCELLED = "cancelled"
+    STATUS_EXPIRED = "expired"
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "En attente"),
+        (STATUS_SUCCESSFUL, "Réussi"),
+        (STATUS_FAILED, "Échoué"),
+        (STATUS_CANCELLED, "Annulé"),
+        (STATUS_EXPIRED, "Expiré"),
+    ]
+
+    transaction_id = models.CharField(
+        _("ID transaction Orange Money"), 
+        max_length=255, 
+        unique=True, 
+        db_index=True
+    )
+    cart_snapshot = models.JSONField(
+        _("Snapshot du panier"),
+        help_text="Liste des items: [{id, name, price, quantity}]",
+        default=list,
+    )
+    # Facturation (pour créer la Order à la confirmation)
+    billing_snapshot = models.JSONField(
+        _("Snapshot facturation"),
+        help_text="{email, first_name, last_name, address, city, country, zip_code, phone}",
+        default=dict,
+        blank=True,
+    )
+    total_cfa = models.PositiveIntegerField(_("Total CFA"), default=0)
+    amount = models.PositiveIntegerField(_("Montant XAF"), default=0)
+    currency = models.CharField(_("Devise"), max_length=3, default="XAF")
+    phone_number = models.CharField(
+        _("Numéro de téléphone Orange"), 
+        max_length=20,
+        help_text="Numéro au format 237XXXXXXXXX"
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_PENDING,
+        db_index=True,
+    )
+    orange_response = models.JSONField(
+        _("Réponse Orange Money"),
+        help_text="Réponse complète de l'API Orange Money",
+        default=dict,
+        blank=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _("Commande Orange Money en attente")
+        verbose_name_plural = _("Commandes Orange Money en attente")
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Pending Orange Money {self.transaction_id} ({self.status})"
+
+
 class Order(models.Model):
     """
     Commande client (créée après capture réussie du paiement PayPal).
@@ -616,10 +813,14 @@ class Order(models.Model):
     PAYMENT_PAYPAL = "paypal"
     PAYMENT_BANK = "bank"
     PAYMENT_CHEQUE = "cheque"
+    PAYMENT_MTN_MOMO = "mtn_momo"
+    PAYMENT_ORANGE_MONEY = "orange_money"
     PAYMENT_CHOICES = [
         (PAYMENT_PAYPAL, "PayPal"),
         (PAYMENT_BANK, "Virement bancaire"),
         (PAYMENT_CHEQUE, "Chèque"),
+        (PAYMENT_MTN_MOMO, "MTN Mobile Money"),
+        (PAYMENT_ORANGE_MONEY, "Orange Money"),
     ]
 
     # Client
@@ -646,6 +847,20 @@ class Order(models.Model):
     )
     paypal_order_id = models.CharField(
         _("ID commande PayPal"),
+        max_length=255,
+        blank=True,
+        null=True,
+        db_index=True,
+    )
+    mtn_transaction_id = models.CharField(
+        _("ID transaction MTN MoMo"),
+        max_length=255,
+        blank=True,
+        null=True,
+        db_index=True,
+    )
+    orange_transaction_id = models.CharField(
+        _("ID transaction Orange Money"),
         max_length=255,
         blank=True,
         null=True,

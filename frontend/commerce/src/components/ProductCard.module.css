@@ -9,6 +9,7 @@
     display: flex;
     flex-direction: column;
     transition: all 0.35s ease;
+    box-shadow: 0 6px 16px rgba(14, 13, 13, 0.15);
   }
   
   .product:hover {
@@ -35,7 +36,7 @@
     max-height: 95%;
     object-fit: contain;
     background-color: #ffffff;
-    border: 1px solid #D10024;
+    border: 1.5px solid #d10081;
     border-radius: 10px;
     box-shadow:
       0 0 0 1px rgba(209, 0, 36, 0.15),
@@ -162,11 +163,11 @@
   
   .productName a {
     text-decoration: none;
-    color: #2B2D42;
+    color:#800852;
   }
   
   .productName a:hover {
-    color: #D10024;
+    color: #d10081;
   }
   
   .productOldPrice {
@@ -177,7 +178,12 @@
   .productPrice {
     font-size: 1.125rem;
     font-weight: 700;
-    color: #D10024;
+    color:  rgb(204, 155, 9)!important;
   }
-  
+ 
+  .productPriceCFA {
+    font-size: 1.115rem;
+    font-weight: 700;
+    color: rgb(126, 99, 25)!important;
+  }
   

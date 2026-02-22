@@ -8,6 +8,7 @@ import { useWishlist } from '../../context/WishlistContext';
 import { useCart } from '../../context/CartContext';
 import ProductCard from '../ProductCard';
 import styles from './NewProductsSection.module.css';
+import ProductSummary from '../ProductSummary/ProductSummary';
 
 const NewProductsSection = () => {
   const [categories, setCategories] = useState([]);
@@ -162,7 +163,7 @@ const NewProductsSection = () => {
           {/* Section Title */}
           <div className={styles.sectionTitleWrapper}>
             <div className={styles.sectionTitle}>
-              <h3 className={styles.title}>New Products</h3>
+              <h3 className={styles.title}>Nouveaux produits</h3>
               <div className={styles.sectionNav}>
                 <ul className={styles.tabNav}>
                   {categories.map((category) => (
@@ -222,13 +223,14 @@ const NewProductsSection = () => {
 
 {/* Bouton aligné à droite */}
 <div className={styles.visitBtnWrapper}>
-  <Link href="/autre-page" className={styles.visitBtn}>
+  <Link href="/Boutique" className={styles.visitBtn}>
     Visitez tout le comptoir
   </Link>
 </div>
 
 
       </div>
+      <ProductSummary />
     </section>
   );
 };

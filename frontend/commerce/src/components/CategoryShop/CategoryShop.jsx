@@ -124,7 +124,7 @@ export default function ShopCarousel() {
                     href={`/category/${cat.slug}`}
                     className={styles.ctaBtn}
                   >
-                    Shop now
+                    Voir
                     <i className="fa fa-arrow-circle-right"></i>
                   </Link>
                 </div>

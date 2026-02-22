@@ -8,9 +8,9 @@ from datetime import timedelta
 from .models import SiteSettings, ProductCarousel, ProductPromotion, Category, Product, ParametrePage
 from .serializers import SiteSettingsSerializer, ProductCarouselSerializer, ProductPromotionSerializer, \
     CategorySerializer, CategoryNewProductsSerializer, ParametrePageSerializer
-from .models import SiteSettings, ProductCarousel, ProductPromotion, Category, Product, ParametrePage, ProductFlash, FlashProductItem, Commentaire, PendingPayPalOrder, Order, OrderItem
+from .models import SiteSettings, ProductCarousel, ProductPromotion, Category, Product, ParametrePage, ProductFlash, FlashProductItem, Commentaire, PendingPayPalOrder, PendingMTNMoMoOrder, PendingOrangeMoneyOrder, Order, OrderItem, MaSelection
 from .serializers import SiteSettingsSerializer, ProductCarouselSerializer, ProductPromotionSerializer, \
-    CategorySerializer, CategoryNewProductsSerializer, ParametrePageSerializer, MainFlashProductSerializer, SecondaryFlashProductSerializer, ProductSearchSerializer, ProductDetailSerializer, CommentaireSerializer, CommentaireCreateSerializer, ProductCommentairesSummarySerializer, BoutiqueProductSerializer
+    CategorySerializer, CategoryNewProductsSerializer, ParametrePageSerializer, MainFlashProductSerializer, SecondaryFlashProductSerializer, ProductSearchSerializer, ProductDetailSerializer, CommentaireSerializer, CommentaireCreateSerializer, ProductCommentairesSummarySerializer, BoutiqueProductSerializer, MaSelectionSerializer, MaSelectionProductSerializer
 from django.db.models import Q, Count, Avg
 from rest_framework.throttling import UserRateThrottle, AnonRateThrottle
 from rest_framework.views import APIView
@@ -18,8 +18,12 @@ from decimal import Decimal
 import os
 import re
 import requests
+import uuid
+import logging
 
 # Create your views here.
+
+logger = logging.getLogger(__name__)
 
 
 # Informations générales sur l'entreprise
@@ -1171,3 +1175,438 @@ class CapturePayPalOrderView(APIView):
             {"success": True, "order_id": order.id, "detail": "Paiement effectué avec succès."},
             status=status.HTTP_200_OK,
         )
+
+
+def _create_order_from_pending_mtn(pending_order):
+    """Créer une commande finale à partir d'une commande MTN en attente"""
+    billing = pending_order.billing_snapshot or {}
+    cart = pending_order.cart_snapshot
+
+    order = Order.objects.create(
+        email=billing.get("email", ""),
+        first_name=billing.get("first_name", ""),
+        last_name=billing.get("last_name", ""),
+        address=billing.get("address", ""),
+        city=billing.get("city", ""),
+        country=billing.get("country", ""),
+        zip_code=billing.get("zip_code", ""),
+        phone=billing.get("phone", ""),
+        total_cfa=pending_order.total_cfa,
+        status=Order.STATUS_PAID,
+        payment_method=Order.PAYMENT_MTN_MOMO,
+        mtn_transaction_id=pending_order.transaction_id,
+    )
+
+    # Créer les OrderItem
+    for item in cart:
+        product_id = item.get("id")
+        try:
+            product = Product.objects.get(pk=product_id) if product_id else None
+        except Product.DoesNotExist:
+            product = None
+        OrderItem.objects.create(
+            order=order,
+            product=product,
+            name=item.get("name", ""),
+            price=int(item.get("price", 0)),
+            quantity=int(item.get("quantity", 1)),
+        )
+
+    return order
+
+
+class RequestMTNPaymentView(APIView):
+    """
+    Crée une demande de paiement MTN Mobile Money.
+    Body: cart, billing, amount, currency
+    """
+    permission_classes = [AllowAny]
+    throttle_classes = [AnonRateThrottle, UserRateThrottle]
+
+    def post(self, request):
+        try:
+            cart = request.data.get("cart", [])
+            billing = request.data.get("billing", {})
+            amount = request.data.get("amount", 0)
+            currency = request.data.get("currency", "XAF")
+        except Exception:
+            return Response(
+                {"detail": "Données invalides."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validation du panier
+        try:
+            total_cfa, cart_snapshot = _validate_cart(cart)
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validation du montant
+        if amount != total_cfa:
+            return Response(
+                {"detail": "Le montant ne correspond pas au total du panier."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validation du numéro de téléphone
+        phone_number = billing.get("phone", "").strip()
+        if not phone_number or not phone_number.startswith("237"):
+            return Response(
+                {"detail": "Un numéro de téléphone MTN valide est requis (format: 237XXXXXXXXX)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        billing_snap = _billing_snapshot(billing)
+        if not billing_snap.get("email"):
+            return Response(
+                {"detail": "L'email de facturation est requis."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Générer un ID de transaction unique
+        transaction_id = f"MTN-{uuid.uuid4().hex[:12].upper()}"
+
+        try:
+            # Appeler l'API MTN MoMo
+            from .mtn_momo_service import request_payment
+            result = request_payment(
+                phone_number=phone_number,
+                amount=amount,
+                currency=currency,
+                external_id=transaction_id
+            )
+
+            if result.get("success"):
+                # Créer l'enregistrement en attente
+                pending_order = PendingMTNMoMoOrder.objects.create(
+                    transaction_id=transaction_id,
+                    cart_snapshot=cart_snapshot,
+                    billing_snapshot=billing_snap,
+                    total_cfa=total_cfa,
+                    amount=amount,
+                    currency=currency,
+                    phone_number=phone_number,
+                    status=PendingMTNMoMoOrder.STATUS_PENDING,
+                    mtn_response=result
+                )
+
+                return Response({
+                    "success": True,
+                    "transactionId": transaction_id,
+                    "message": "Demande de paiement créée avec succès"
+                })
+            else:
+                return Response({
+                    "success": False,
+                    "message": result.get("message", "Erreur lors de la création du paiement")
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            logger.error(f"Erreur MTN MoMo: {e}")
+            return Response(
+                {"detail": f"Erreur lors de la création du paiement: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class CheckMTNPaymentStatusView(APIView):
+    """
+    Vérifie le statut d'un paiement MTN MoMo.
+    """
+    permission_classes = [AllowAny]
+    throttle_classes = [AnonRateThrottle, UserRateThrottle]
+
+    def get(self, request, transaction_id):
+        try:
+            pending_order = PendingMTNMoMoOrder.objects.get(transaction_id=transaction_id)
+        except PendingMTNMoMoOrder.DoesNotExist:
+            return Response(
+                {"detail": "Transaction introuvable."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            # Vérifier le statut auprès de MTN
+            from .mtn_momo_service import check_payment_status
+            status_data = check_payment_status(transaction_id)
+            mtn_status = status_data.get("status", "").upper()
+
+            # Mapper les statuts MTN vers nos statuts
+            if mtn_status == "SUCCESSFUL":
+                pending_order.status = PendingMTNMoMoOrder.STATUS_SUCCESSFUL
+                # Créer la commande finale si elle n'existe pas
+                if not Order.objects.filter(mtn_transaction_id=transaction_id).exists():
+                    _create_order_from_pending_mtn(pending_order)
+            elif mtn_status == "FAILED":
+                pending_order.status = PendingMTNMoMoOrder.STATUS_FAILED
+            elif mtn_status == "PENDING":
+                pending_order.status = PendingMTNMoMoOrder.STATUS_PENDING
+            elif mtn_status in ["CANCELLED", "CANCELED"]:
+                pending_order.status = PendingMTNMoMoOrder.STATUS_CANCELLED
+
+            pending_order.mtn_response = status_data
+            pending_order.save()
+
+            # Mapper le statut pour le frontend (convertir "successful" en "success")
+            status_mapping = {
+                "pending": "pending",
+                "successful": "success",
+                "failed": "failed",
+                "cancelled": "cancelled",
+                "expired": "cancelled"
+            }
+            frontend_status = status_mapping.get(pending_order.status, pending_order.status)
+            
+            return Response({
+                "status": frontend_status,
+                "transactionId": transaction_id,
+                "message": f"Statut: {pending_order.get_status_display()}"
+            })
+
+        except Exception as e:
+            logger.error(f"Erreur vérification statut MTN: {e}")
+            return Response({
+                "status": pending_order.status,
+                "transactionId": transaction_id,
+                "message": f"Erreur: {str(e)}"
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+def _create_order_from_pending_orange(pending_order):
+    """Créer une commande finale à partir d'une commande Orange Money en attente"""
+    billing = pending_order.billing_snapshot or {}
+    cart = pending_order.cart_snapshot
+
+    order = Order.objects.create(
+        email=billing.get("email", ""),
+        first_name=billing.get("first_name", ""),
+        last_name=billing.get("last_name", ""),
+        address=billing.get("address", ""),
+        city=billing.get("city", ""),
+        country=billing.get("country", ""),
+        zip_code=billing.get("zip_code", ""),
+        phone=billing.get("phone", ""),
+        total_cfa=pending_order.total_cfa,
+        status=Order.STATUS_PAID,
+        payment_method=Order.PAYMENT_ORANGE_MONEY,
+        orange_transaction_id=pending_order.transaction_id,
+    )
+
+    # Créer les OrderItem
+    for item in cart:
+        product_id = item.get("id")
+        try:
+            product = Product.objects.get(pk=product_id) if product_id else None
+        except Product.DoesNotExist:
+            product = None
+        OrderItem.objects.create(
+            order=order,
+            product=product,
+            name=item.get("name", ""),
+            price=int(item.get("price", 0)),
+            quantity=int(item.get("quantity", 1)),
+        )
+
+    return order
+
+
+class RequestOrangePaymentView(APIView):
+    """
+    Crée une demande de paiement Orange Money.
+    Body: cart, billing, amount, currency
+    """
+    permission_classes = [AllowAny]
+    throttle_classes = [AnonRateThrottle, UserRateThrottle]
+
+    def post(self, request):
+        try:
+            cart = request.data.get("cart", [])
+            billing = request.data.get("billing", {})
+            amount = request.data.get("amount", 0)
+            currency = request.data.get("currency", "XAF")
+        except Exception:
+            return Response(
+                {"detail": "Données invalides."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validation du panier
+        try:
+            total_cfa, cart_snapshot = _validate_cart(cart)
+        except ValueError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validation du montant
+        if amount != total_cfa:
+            return Response(
+                {"detail": "Le montant ne correspond pas au total du panier."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validation du numéro de téléphone
+        phone_number = billing.get("phone", "").strip()
+        if not phone_number or not phone_number.startswith("237"):
+            return Response(
+                {"detail": "Un numéro de téléphone Orange valide est requis (format: 237XXXXXXXXX)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        billing_snap = _billing_snapshot(billing)
+        if not billing_snap.get("email"):
+            return Response(
+                {"detail": "L'email de facturation est requis."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Générer un ID de transaction unique
+        transaction_id = f"ORANGE-{uuid.uuid4().hex[:12].upper()}"
+
+        try:
+            # Appeler l'API Orange Money
+            from .orange_money_service import request_payment
+            result = request_payment(
+                phone_number=phone_number,
+                amount=amount,
+                currency=currency,
+                external_id=transaction_id
+            )
+
+            if result.get("success"):
+                # Créer l'enregistrement en attente
+                pending_order = PendingOrangeMoneyOrder.objects.create(
+                    transaction_id=transaction_id,
+                    cart_snapshot=cart_snapshot,
+                    billing_snapshot=billing_snap,
+                    total_cfa=total_cfa,
+                    amount=amount,
+                    currency=currency,
+                    phone_number=phone_number,
+                    status=PendingOrangeMoneyOrder.STATUS_PENDING,
+                    orange_response=result
+                )
+
+                return Response({
+                    "success": True,
+                    "transactionId": transaction_id,
+                    "message": "Demande de paiement créée avec succès"
+                })
+            else:
+                return Response({
+                    "success": False,
+                    "message": result.get("message", "Erreur lors de la création du paiement")
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            logger.error(f"Erreur Orange Money: {e}")
+            return Response(
+                {"detail": f"Erreur lors de la création du paiement: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class CheckOrangePaymentStatusView(APIView):
+    """
+    Vérifie le statut d'un paiement Orange Money.
+    """
+    permission_classes = [AllowAny]
+    throttle_classes = [AnonRateThrottle, UserRateThrottle]
+
+    def get(self, request, transaction_id):
+        try:
+            pending_order = PendingOrangeMoneyOrder.objects.get(transaction_id=transaction_id)
+        except PendingOrangeMoneyOrder.DoesNotExist:
+            return Response(
+                {"detail": "Transaction introuvable."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            # Vérifier le statut auprès d'Orange
+            from .orange_money_service import check_payment_status
+            status_data = check_payment_status(transaction_id)
+            orange_status = status_data.get("status", "").upper()
+
+            # Mapper les statuts Orange vers nos statuts
+            if orange_status == "SUCCESSFUL" or orange_status == "SUCCESS":
+                pending_order.status = PendingOrangeMoneyOrder.STATUS_SUCCESSFUL
+                # Créer la commande finale si elle n'existe pas
+                if not Order.objects.filter(orange_transaction_id=transaction_id).exists():
+                    _create_order_from_pending_orange(pending_order)
+            elif orange_status == "FAILED":
+                pending_order.status = PendingOrangeMoneyOrder.STATUS_FAILED
+            elif orange_status == "PENDING":
+                pending_order.status = PendingOrangeMoneyOrder.STATUS_PENDING
+            elif orange_status in ["CANCELLED", "CANCELED"]:
+                pending_order.status = PendingOrangeMoneyOrder.STATUS_CANCELLED
+
+            pending_order.orange_response = status_data
+            pending_order.save()
+
+            # Mapper le statut pour le frontend (convertir "successful" en "success")
+            status_mapping = {
+                "pending": "pending",
+                "successful": "success",
+                "failed": "failed",
+                "cancelled": "cancelled",
+                "expired": "cancelled"
+            }
+            frontend_status = status_mapping.get(pending_order.status, pending_order.status)
+            
+            return Response({
+                "status": frontend_status,
+                "transactionId": transaction_id,
+                "message": f"Statut: {pending_order.get_status_display()}"
+            })
+
+        except Exception as e:
+            logger.error(f"Erreur vérification statut Orange: {e}")
+            return Response({
+                "status": pending_order.status,
+                "transactionId": transaction_id,
+                "message": f"Erreur: {str(e)}"
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# Ma Selection
+# Ma Selection
+
+class MaSelectionViewSet(viewsets.ViewSet):
+    """
+    API endpoint pour Ma Selection.
+    Retourne le titre et les produits sélectionnés manuellement par l'administrateur.
+    """
+    permission_classes = [AllowAny]
+    throttle_classes = []  # Désactiver le rate limiting pour les endpoints publics essentiels
+
+    def list(self, request):
+        """
+        Retourne la configuration Ma Selection avec les produits sélectionnés.
+        """
+        ma_selection = MaSelection.load()
+        
+        if not ma_selection:
+            return Response({
+                'title': 'Ma Selection',
+                'is_active': False,
+                'products': []
+            })
+        
+        # Vérifier si la section est active
+        if not ma_selection.is_active:
+            return Response({
+                'title': ma_selection.title,
+                'is_active': False,
+                'products': []
+            })
+        
+        # Récupérer les produits actifs seulement
+        products = ma_selection.products.filter(is_active=True)
+        
+        serializer = MaSelectionSerializer(ma_selection)
+        
+        return Response({
+            'title': ma_selection.title,
+            'is_active': ma_selection.is_active,
+            'count': products.count(),
+            'results': MaSelectionProductSerializer(products, many=True).data
+        })
